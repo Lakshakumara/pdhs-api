@@ -1,8 +1,7 @@
-import "dotenv/config"
 import { PrismaClient } from '@prisma/client'
+import seedData from '../scripts/seed-data.js'
 import { Pool } from 'pg'
 import { PrismaPg } from '@prisma/adapter-pg'
-import seedData from '../scripts/seed-data.js'
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
@@ -233,37 +232,3 @@ main()
     await pool.end()
     process.exit(1)
   })
-
-
-/*
-async function main() {
-  console.log('Seeding database...')
-  
-  await prisma.seedSnapshot.createMany({
-    data: [
-      {
-        name: 'initial_snapshot',
-        payload: { version: '1.0.0', description: 'Initial data snapshot' },
-      },
-      {
-        name: 'update_snapshot_1',
-        payload: { version: '1.1.0', description: 'First update snapshot' },
-      },
-    ],
-    skipDuplicates: true,
-  })
-  
-  console.log('Seeding completed')
-}
-
-main()
-  .then(async () => {
-    await prisma.$disconnect()
-    await pool.end()
-  })
-  .catch(async (e) => {
-    console.error('Error seeding database:', e)
-    await prisma.$disconnect()
-    await pool.end()
-    process.exit(1)
-  })*/

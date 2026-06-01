@@ -1,5 +1,5 @@
 generator client {
-  provider = "prisma-client-js" 
+  provider = "prisma-client-js"
 }
 
 datasource db {
@@ -7,86 +7,87 @@ datasource db {
 }
 
 model District {
-  id        String   @id
-  name      String
+  id           String        @id
+  name         String
   institutions Institution[]
-  users       User[]
-  
+  users        User[]
+
   @@map("districts")
 }
 
 model Institution {
-  id          String   @id
-  name        String
-  type        String
-  active      Boolean
-  districtId  String?
-  district    District? @relation(fields: [districtId], references: [id])
-  users       User[]
-  equipment   Equipment[]
+  id             String          @id
+  name           String
+  type           String
+  active         Boolean
+  districtId     String?
+  district       District?       @relation(fields: [districtId], references: [id])
+  users          User[]
+  equipment      Equipment[]
   repairRequests RepairRequest[]
-  workOrders  WorkOrder[] @relation("InstitutionWorkOrders")
-  auditLogs   AuditLog[] @relation("InstitutionAuditLogs")
-  
+  workOrders     WorkOrder[]     @relation("InstitutionWorkOrders")
+  auditLogs      AuditLog[]      @relation("InstitutionAuditLogs")
+
   @@map("institutions")
 }
 
 model User {
-  id         String   @id
-  username   String   @unique
-  fullName   String
-  role       String
-  active     Boolean
-  districtId String?
-  district   District? @relation(fields: [districtId], references: [id])
-  institutionId String?
-  institution Institution? @relation(fields: [institutionId], references: [id])
+  id             String          @id
+  username       String          @unique
+  fullName       String
+  role           String
+  active         Boolean
+  districtId     String?
+  district       District?       @relation(fields: [districtId], references: [id])
+  institutionId  String?
+  institution    Institution?    @relation(fields: [institutionId], references: [id])
   repairRequests RepairRequest[]
   workOrders     WorkOrder[]
   auditLogs      AuditLog[]
-  
+
   @@map("users")
 }
 
 model Supplier {
-  id          String   @id
-  name        String
-  contactName String?
-  phone       String?
-  email       String?
+  id               String          @id
+  name             String
+  contactName      String?
+  phone            String?
+  email            String?
   performanceNotes String?
-  rating      Int?
-  purchaseOrders PurchaseOrder[]
-  
+  rating           Int?
+  purchaseOrders   PurchaseOrder[]
+
   @@map("suppliers")
 }
 
 model InventoryItem {
-  id              String   @id
-  name            String
-  category        String
-  currentStock    Decimal   @db.Decimal(10, 2)
-  minStockThreshold Decimal   @db.Decimal(10, 2)
-  unitOfMeasure   String
-  costPerUnit     Decimal   @db.Decimal(10, 2)
-  
+  id                String     @id
+  name              String
+  category          String
+  currentStock      Decimal    @db.Decimal(10, 2)
+  minStockThreshold Decimal    @db.Decimal(10, 2)
+  unitOfMeasure     String
+  costPerUnit       Decimal    @db.Decimal(10, 2)
+  partsUsed         PartUsed[]
+
   @@map("inventory_items")
 }
 
 model ServicePlan {
-  id                      String   @id
-  agreementReference      String?
-  expiryDate              DateTime? @db.Date
-  sparePartDiscountPercent Decimal?   @db.Decimal(10, 2)
-  yearlyPricing           Json?
-  equipmentId             String   @unique
-  equipment               Equipment @relation(fields: [equipmentId], references: [id])
-  
+  id                       String    @id
+  agreementReference       String?
+  expiryDate               DateTime? @db.Date
+  sparePartDiscountPercent Decimal?  @db.Decimal(10, 2)
+  yearlyPricing            Json?
+  equipmentId              String    @unique
+  equipment                Equipment @relation(fields: [equipmentId], references: [id])
+
   @@map("service_plans")
 }
 
 model EquipmentComponent {
-  id                   String   @id
+  id                   String    @id
   name                 String
   description          String?
   partNumber           String?
@@ -96,174 +97,197 @@ model EquipmentComponent {
   expiryOrWarrantyDate DateTime? @db.Date
   equipmentId          String
   equipment            Equipment @relation(fields: [equipmentId], references: [id])
-  
+
   @@map("equipment_components")
 }
 
 model Equipment {
-  id                 String   @id
-  name               String
-  description        String?
-  category           String
-  manufacturer       String
-  countryOfOrigin    String
-  supplierName       String?
-  tenderNumber       String?
-  purchaseOrderNumber String?
-  modelNumber        String?
-  serialNumber       String?
-  batchNumber        String?
-  quantityReceived   Decimal   @db.Decimal(10, 2)
-  dateOfManufacture  DateTime? @db.Date
-  dateOfReceipt      DateTime? @db.Date
-  warrantyPeriodMonths Int?
-  status             String
+  id                    String               @id
+  name                  String
+  description           String?
+  category              String
+  manufacturer          String
+  countryOfOrigin       String
+  supplierName          String?
+  tenderNumber          String?
+  purchaseOrderNumber   String?
+  modelNumber           String?
+  serialNumber          String?
+  batchNumber           String?
+  quantityReceived      Decimal              @db.Decimal(10, 2)
+  dateOfManufacture     DateTime?            @db.Date
+  dateOfReceipt         DateTime?            @db.Date
+  warrantyPeriodMonths  Int?
+  status                String
   assignedInstitutionId String?
-  assignedInstitution Institution? @relation(fields: [assignedInstitutionId], references: [id])
-  servicePlan        ServicePlan?
-  components         EquipmentComponent[]
-  assignments        Assignment[]
-  repairRequests     RepairRequest[]
-  
+  assignedInstitution   Institution?         @relation(fields: [assignedInstitutionId], references: [id])
+  servicePlan           ServicePlan?
+  components            EquipmentComponent[]
+  assignments           Assignment[]
+  repairRequests        RepairRequest[]
+  disposal EquipmentDisposal?
+
   @@map("equipment")
 }
 
+model EquipmentDisposal {
+  id                 String    @id
+  equipmentId        String    @unique
+
+  disposalDate       DateTime? @db.Date
+  disposalMethod     String?
+  reason             String
+
+  approvedByUserId   String
+  approvalReference  String?
+
+  equipment          Equipment @relation(fields: [equipmentId], references: [id])
+
+  @@map("equipment_disposals")
+}
+
 model Assignment {
-  id           String   @id
-  equipmentId  String
-  equipment    Equipment @relation(fields: [equipmentId], references: [id])
-  fromEntity   String
-  toEntity     String
-  toEntityId   String
-  quantity     Decimal   @db.Decimal(10, 2)
+  id             String    @id
+  equipmentId    String
+  equipment      Equipment @relation(fields: [equipmentId], references: [id])
+  fromEntity     String
+  toEntity       String
+  toEntityId     String
+  quantity       Decimal   @db.Decimal(10, 2)
   assignmentDate DateTime
-  status       String
-  
+  status         String
+
   @@map("assignments")
 }
 
 model RepairRequest {
-  id             String   @id
-  equipmentId    String
-  equipment      Equipment @relation(fields: [equipmentId], references: [id])
-  equipmentName  String?
+  id                    String      @id
+  equipmentId           String
+  equipment             Equipment   @relation(fields: [equipmentId], references: [id])
+  equipmentName         String?
   equipmentSerialNumber String?
-  componentId    String?
-  componentName  String?
-  faultDescription String?
-  priority       String
-  submittedByUserId String
-  submittedByUser   User @relation(fields: [submittedByUserId], references: [id])
-  submittedByUserName String?
-  submissionDate  DateTime
-  institutionId   String
-  institution     Institution @relation(fields: [institutionId], references: [id])
-  institutionName String?
-  workOrders      WorkOrder[]
-  
+  componentId           String?
+  componentName         String?
+  faultDescription      String?
+  priority              String
+  submittedByUserId     String
+  submittedByUser       User        @relation(fields: [submittedByUserId], references: [id])
+  submittedByUserName   String?
+  submissionDate        DateTime
+  institutionId         String
+  institution           Institution @relation(fields: [institutionId], references: [id])
+  institutionName       String?
+  workOrders            WorkOrder[]
+
   @@map("repair_requests")
 }
 
 model WorkOrder {
-  id                 String   @id
-  repairRequestId    String
-  repairRequest      RepairRequest @relation(fields: [repairRequestId], references: [id])
-  assignedTechnicianId String
-  assignedTechnician User @relation(fields: [assignedTechnicianId], references: [id])
+  id                     String               @id
+  repairRequestId        String
+  repairRequest          RepairRequest        @relation(fields: [repairRequestId], references: [id])
+  assignedTechnicianId   String?
+  assignedTechnician     User?                @relation(fields: [assignedTechnicianId], references: [id])
   assignedTechnicianName String?
-  diagnosisNotes     String?
-  status             String
-  statusDate         DateTime
-  inspectedComponents InspectedComponent[]
-  partsUsed          PartUsed[]
-  institutionId      String?
-  institution        Institution? @relation("InstitutionWorkOrders", fields: [institutionId], references: [id])
-  
+  diagnosisNotes         String?
+  status                 String
+  statusDate             DateTime
+  inspectedComponents    InspectedComponent[]
+  partsUsed              PartUsed[]
+  institutionId          String?
+  institution            Institution?         @relation("InstitutionWorkOrders", fields: [institutionId], references: [id])
+
   @@map("work_orders")
 }
 
 model InspectedComponent {
-  id            String   @id
-  componentId   String
-  componentName String?
-  inspected     Boolean
+  id             String    @id
+  componentId    String
+  componentName  String?
+  inspected      Boolean
   conditionNotes String?
-  workOrderId   String
-  workOrder     WorkOrder @relation(fields: [workOrderId], references: [id])
-  
+  workOrderId    String
+  workOrder      WorkOrder @relation(fields: [workOrderId], references: [id])
+
   @@map("inspected_components")
 }
 
 model PartUsed {
-  id          String   @id
-  description String?
-  quantity    Decimal   @db.Decimal(10, 2)
-  workOrderId String
-  workOrder   WorkOrder @relation(fields: [workOrderId], references: [id])
-  
+  id              String        @id
+  description     String?
+  quantity        Decimal       @db.Decimal(10, 2)
+  inventoryItemId String
+  inventoryItem   InventoryItem @relation(fields: [inventoryItemId], references: [id])
+  workOrderId     String
+  workOrder       WorkOrder     @relation(fields: [workOrderId], references: [id])
+
   @@map("parts_used")
 }
 
 model ProcurementPlan {
-  id           String   @id
-  itemDescription String
-  estimatedQuantity Decimal   @db.Decimal(10, 2)
-  estimatedCost   Decimal   @db.Decimal(10, 2)
+  id                String          @id
+  itemDescription   String
+  estimatedQuantity Decimal         @db.Decimal(10, 2)
+  estimatedCost     Decimal         @db.Decimal(10, 2)
   procurementMethod String
-  purchaseOrders PurchaseOrder[]
-  
+  purchaseOrders    PurchaseOrder[]
+
   @@map("procurement_plans")
 }
 
 model PurchaseOrder {
-  id         String   @id
-  planId     String
-  plan       ProcurementPlan @relation(fields: [planId], references: [id])
-  supplierId String
-  supplier   Supplier @relation(fields: [supplierId], references: [id])
-  supplierName String?
-  poNumber   String
-  orderDate  DateTime
+  id             String              @id
+  planId         String
+  plan           ProcurementPlan     @relation(fields: [planId], references: [id])
+  supplierId     String
+  supplier       Supplier            @relation(fields: [supplierId], references: [id])
+  supplierName   String?
+  poNumber       String
+  orderDate      DateTime
   approvalStatus String
-  totalCost  Decimal   @db.Decimal(10, 2)
-  items      PurchaseOrderItem[]
-  
+  totalCost      Decimal             @db.Decimal(10, 2)
+  items          PurchaseOrderItem[]
+
   @@map("purchase_orders")
 }
 
 model PurchaseOrderItem {
-  id        String   @id
-  description String
-  quantity    Decimal   @db.Decimal(10, 2)
-  unitCost    Decimal   @db.Decimal(10, 2)
-  category    String
+  id              String        @id
+  description     String
+  quantity        Decimal       @db.Decimal(10, 2)
+  unitCost        Decimal       @db.Decimal(10, 2)
+  category        String
   purchaseOrderId String
-  purchaseOrder PurchaseOrder @relation(fields: [purchaseOrderId], references: [id])
-  
+  purchaseOrder   PurchaseOrder @relation(fields: [purchaseOrderId], references: [id])
+
   @@map("purchase_order_items")
 }
 
 model Grn {
-  id        String   @id
-  // Add fields as needed
-  
+  id              String   @id
+  purchaseOrderId String
+  poNumber        String
+  grnNumber       String
+  receivedDate    DateTime
+  status          String
+
   @@map("grns")
 }
 
 model AuditLog {
-  id        String   @id
-  timestamp DateTime
-  userId    String
-  user      User @relation(fields: [userId], references: [id])
-  userName  String?
-  userRole  String?
-  action    String
-  entityName String
-  recordId  String
-  description String?
+  id            String       @id
+  timestamp     DateTime
+  userId        String
+  user          User         @relation(fields: [userId], references: [id])
+  userName      String?
+  userRole      String?
+  action        String
+  entityName    String
+  recordId      String
+  description   String?
   institutionId String?
-  institution Institution? @relation("InstitutionAuditLogs", fields: [institutionId], references: [id])
-  
+  institution   Institution? @relation("InstitutionAuditLogs", fields: [institutionId], references: [id])
+
   @@map("audit_logs")
 }
 
@@ -271,6 +295,6 @@ model SeedSnapshot {
   name       String   @id
   payload    Json
   updated_at DateTime @default(now()) @db.Timestamptz(6)
-  
+
   @@map("seed_snapshot")
 }
