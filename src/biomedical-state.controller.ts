@@ -1,6 +1,5 @@
 import { Controller, Get, Post, Body, Put, Param, Query, NotFoundException } from '@nestjs/common';
 import { PrismaService } from './prisma.service';
-import { CreateEquipmentDto } from './dto/index.dto';
 
 function generateId(prefix: string): string {
   return `${prefix}_${Date.now()}_${Math.floor(Math.random() * 10000)}`;
@@ -28,7 +27,7 @@ export class BiomedicalStateController {
   @Get('users')
   async getUsers() {
     return this.prisma.user.findMany({
-      include: { district: true, institution: true },
+      include: { roles: true, institution: true },
     });
   }
 
@@ -131,15 +130,19 @@ export class BiomedicalStateController {
   @Post('equipment')
   async addEquipment(@Body() data: any) {
     const id = generateId('eq');
-    const { components, ...equipmentData } = data;
+    const { components, servicePlan, ...equipmentData } = data;
     console.log("add eqipment ", equipmentData)
     console.log("add eqipment ", components)
     return this.prisma.equipment.create({
       data: {
-        id, ...equipmentData,
+        id,
+        ...equipmentData,
         components: {
           create: components
-        }
+        },
+        servicePlan: servicePlan ? {
+          create: servicePlan
+        } : undefined
       }
     });
   }
@@ -147,7 +150,19 @@ export class BiomedicalStateController {
   // Update Equipment
   @Put('equipment/:id')
   async updateEquipment(@Param('id') id: string, @Body() data: any) {
-    return this.prisma.equipment.update({ where: { id }, data });
+    const { components, servicePlan, ...equipmentData } = data;
+    return this.prisma.equipment.update({
+      where: { id },
+      data: {
+        ...equipmentData,
+        servicePlan: servicePlan ? {
+          upsert: {
+            create: servicePlan,
+            update: servicePlan
+          }
+        } : undefined
+      }
+    });
   }
 
   // Assign Equipment

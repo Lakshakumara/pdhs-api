@@ -6,11 +6,40 @@ datasource db {
   provider = "postgresql"
 }
 
+// ─────────────────────────────────────────────
+// ENUMS
+// ─────────────────────────────────────────────
+
+enum RoleType {
+  SUPER_ADMIN_PDHS
+  ADMIN_PDHS
+  SUPER_ADMIN_RDHS
+  ADMIN_RDHS
+  SUPER_ADMIN_INSTITUTE
+  ADMIN_INSTITUTE
+  VIEWER_PDHS
+  VIEWER_RDHS
+  VIEWER_INSTITUTE
+  STORE_KEEPER
+  BIOMEDICAL_TECHNICIAN
+  PROCUREMENT_OFFICER
+  INSTITUTION_USER
+}
+
+enum ScopeType {
+  PDHS
+  RDHS
+  INSTITUTE
+}
+
+// ─────────────────────────────────────────────
+// HIERARCHY
+// ─────────────────────────────────────────────
+
 model District {
   id           String        @id
   name         String
   institutions Institution[]
-  users        User[]
 
   @@map("districts")
 }
@@ -18,6 +47,7 @@ model District {
 model Institution {
   id             String          @id
   name           String
+  email          String?
   type           String
   active         Boolean
   districtId     String?
@@ -31,22 +61,102 @@ model Institution {
   @@map("institutions")
 }
 
+// ─────────────────────────────────────────────
+// USER
+// ─────────────────────────────────────────────
+
 model User {
-  id             String          @id
-  username       String          @unique
-  fullName       String
-  role           String
-  active         Boolean
-  districtId     String?
-  district       District?       @relation(fields: [districtId], references: [id])
-  institutionId  String?
-  institution    Institution?    @relation(fields: [institutionId], references: [id])
-  repairRequests RepairRequest[]
-  workOrders     WorkOrder[]
-  auditLogs      AuditLog[]
+  id                 String               @id
+  username           String               @unique
+  fullName           String
+  email              String?              @unique
+  passwordHash       String
+  mustChangePassword Boolean              @default(true)
+  active             Boolean              @default(true)
+  institutionId      String?
+  institution        Institution?         @relation(fields: [institutionId], references: [id])
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
+
+  // Auth
+  roles              UserRole[]
+  refreshTokens      RefreshToken[]
+  passwordResetTokens PasswordResetToken[]
+
+  // App relations
+  repairRequests     RepairRequest[]
+  workOrders         WorkOrder[]
+  auditLogs          AuditLog[]
+  assignedRoles      UserRole[]           @relation("RoleAssignedBy")
 
   @@map("users")
 }
+
+// ─────────────────────────────────────────────
+// ROLES  (many-to-many User <-> Role with scope)
+// ─────────────────────────────────────────────
+//
+// scopeType + scopeId determines what the role applies to:
+//
+//   PDHS  scope  → scopeId = null        (applies to whole system)
+//   RDHS  scope  → scopeId = districtId  (applies to that district)
+//   INSTITUTE     → scopeId = institutionId (applies to that institution)
+//
+// Examples:
+//   SUPER_ADMIN_PDHS  / PDHS      / null          → full system
+//   ADMIN_RDHS        / RDHS      / dist_rat       → Rathnapura RDHS only
+//   ADMIN_INSTITUTE   / INSTITUTE / inst_bh_rat    → Rathnapura BH only
+//   BIOMEDICAL_TECHNICIAN / PDHS  / null           → PDHS-level technician
+// ─────────────────────────────────────────────
+
+model UserRole {
+  id           String    @id
+  userId       String
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role         RoleType
+  scopeType    ScopeType
+  scopeId      String?   // districtId OR institutionId OR null — plain string, no FK
+  assignedAt   DateTime  @default(now())
+  assignedById String?
+  assignedBy   User?     @relation("RoleAssignedBy", fields: [assignedById], references: [id])
+
+  @@unique([userId, role, scopeId])
+  @@map("user_roles")
+}
+
+// ─────────────────────────────────────────────
+// AUTH TOKENS
+// ─────────────────────────────────────────────
+
+model RefreshToken {
+  id        String    @id
+  token     String    @unique
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+  ipAddress String?
+  userAgent String?
+
+  @@map("refresh_tokens")
+}
+
+model PasswordResetToken {
+  id        String    @id
+  token     String    @unique
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@map("password_reset_tokens")
+}
+
+// ─────────────────────────────────────────────
+// SUPPLIER
+// ─────────────────────────────────────────────
 
 model Supplier {
   id               String          @id
@@ -61,6 +171,10 @@ model Supplier {
   @@map("suppliers")
 }
 
+// ─────────────────────────────────────────────
+// INVENTORY
+// ─────────────────────────────────────────────
+
 model InventoryItem {
   id                String     @id
   name              String
@@ -74,14 +188,30 @@ model InventoryItem {
   @@map("inventory_items")
 }
 
+// ─────────────────────────────────────────────
+// EQUIPMENT
+// ─────────────────────────────────────────────
+
 model ServicePlan {
-  id                       String    @id
-  agreementReference       String?
-  expiryDate               DateTime? @db.Date
-  sparePartDiscountPercent Decimal?  @db.Decimal(10, 2)
-  yearlyPricing            Json?
-  equipmentId              String    @unique
-  equipment                Equipment @relation(fields: [equipmentId], references: [id])
+  id                 String    @id
+  agreementReference String?
+  expiryDate         DateTime? @db.Date
+  noOfFreeService    Int
+  servicePerAnnum    Int?
+  equipmentId        String    @unique
+  equipment          Equipment @relation(fields: [equipmentId], references: [id])
+
+  // Cost details per year — stored as JSON
+  // e.g. { year1: 50000, year2: 55000, year3: 60000, year4: 65000, year5: 70000 }
+  serviceCosts       Json?
+  labourCosts        Json?
+  transportCosts     Json?
+  otherCosts         Json?
+  totalCosts         Json?
+
+  // Spare parts costs as array of JSON objects
+  // e.g. [{ name: 'Battery', year1: 5000, year2: 5500, ... }]
+  sparePartsCosts    Json?
 
   @@map("service_plans")
 }
@@ -125,23 +255,20 @@ model Equipment {
   components            EquipmentComponent[]
   assignments           Assignment[]
   repairRequests        RepairRequest[]
-  disposal EquipmentDisposal?
+  disposal              EquipmentDisposal?
 
   @@map("equipment")
 }
 
 model EquipmentDisposal {
-  id                 String    @id
-  equipmentId        String    @unique
-
-  disposalDate       DateTime? @db.Date
-  disposalMethod     String?
-  reason             String
-
-  approvedByUserId   String
-  approvalReference  String?
-
-  equipment          Equipment @relation(fields: [equipmentId], references: [id])
+  id                String    @id
+  equipmentId       String    @unique
+  disposalDate      DateTime? @db.Date
+  disposalMethod    String?
+  reason            String
+  approvedByUserId  String
+  approvalReference String?
+  equipment         Equipment @relation(fields: [equipmentId], references: [id])
 
   @@map("equipment_disposals")
 }
@@ -159,6 +286,10 @@ model Assignment {
 
   @@map("assignments")
 }
+
+// ─────────────────────────────────────────────
+// REPAIR
+// ─────────────────────────────────────────────
 
 model RepairRequest {
   id                    String      @id
@@ -224,6 +355,10 @@ model PartUsed {
   @@map("parts_used")
 }
 
+// ─────────────────────────────────────────────
+// PROCUREMENT
+// ─────────────────────────────────────────────
+
 model ProcurementPlan {
   id                String          @id
   itemDescription   String
@@ -274,6 +409,10 @@ model Grn {
   @@map("grns")
 }
 
+// ─────────────────────────────────────────────
+// AUDIT
+// ─────────────────────────────────────────────
+
 model AuditLog {
   id            String       @id
   timestamp     DateTime
@@ -290,6 +429,10 @@ model AuditLog {
 
   @@map("audit_logs")
 }
+
+// ─────────────────────────────────────────────
+// SEED SNAPSHOT
+// ─────────────────────────────────────────────
 
 model SeedSnapshot {
   name       String   @id

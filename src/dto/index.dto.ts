@@ -83,27 +83,31 @@ export class CreateUserDto {
   @IsString()
   fullName!: string
 
+  @IsOptional()
+  @IsString()
+  email?: string|null
+
   @IsString()
   @IsIn([
-    'System Administrator',
-    'Biomedical Technician',
-    'Procurement Officer',
-    'PDHS Viewer',
-    'RDHS Officer',
-    'Institution User',
+    'SUPER_ADMIN_PDHS', 'ADMIN_PDHS', 'SUPER_ADMIN_RDHS', 'ADMIN_RDHS',
+    'SUPER_ADMIN_INSTITUTE', 'ADMIN_INSTITUTE', 'VIEWER_PDHS', 'VIEWER_RDHS',
+    'VIEWER_INSTITUTE', 'STORE_KEEPER', 'BIOMEDICAL_TECHNICIAN', 'PROCUREMENT_OFFICER',
+    'INSTITUTION_USER'
   ])
   role!: string
-
+@IsBoolean()
+  mustChangePassword!:boolean
+  
   @IsBoolean()
   active!: boolean
 
   @IsOptional()
   @IsString()
-  districtId?: string
+  districtId?: string|null
 
   @IsOptional()
   @IsString()
-  institutionId?: string
+  institutionId?: string|null
 }
 
 export class UpdateUserDto {

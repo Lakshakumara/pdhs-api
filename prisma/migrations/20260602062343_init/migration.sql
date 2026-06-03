@@ -1,3 +1,9 @@
+-- CreateEnum
+CREATE TYPE "RoleType" AS ENUM ('SUPER_ADMIN_PDHS', 'ADMIN_PDHS', 'SUPER_ADMIN_RDHS', 'ADMIN_RDHS', 'SUPER_ADMIN_INSTITUTE', 'ADMIN_INSTITUTE', 'VIEWER_PDHS', 'VIEWER_RDHS', 'VIEWER_INSTITUTE', 'STORE_KEEPER', 'BIOMEDICAL_TECHNICIAN', 'PROCUREMENT_OFFICER', 'INSTITUTION_USER');
+
+-- CreateEnum
+CREATE TYPE "ScopeType" AS ENUM ('PDHS', 'RDHS', 'INSTITUTE');
+
 -- CreateTable
 CREATE TABLE "districts" (
     "id" TEXT NOT NULL,
@@ -10,6 +16,7 @@ CREATE TABLE "districts" (
 CREATE TABLE "institutions" (
     "id" TEXT NOT NULL,
     "name" TEXT NOT NULL,
+    "email" TEXT,
     "type" TEXT NOT NULL,
     "active" BOOLEAN NOT NULL,
     "districtId" TEXT,
@@ -22,12 +29,54 @@ CREATE TABLE "users" (
     "id" TEXT NOT NULL,
     "username" TEXT NOT NULL,
     "fullName" TEXT NOT NULL,
-    "role" TEXT NOT NULL,
-    "active" BOOLEAN NOT NULL,
-    "districtId" TEXT,
+    "email" TEXT,
+    "passwordHash" TEXT NOT NULL,
+    "mustChangePassword" BOOLEAN NOT NULL DEFAULT true,
+    "active" BOOLEAN NOT NULL DEFAULT true,
     "institutionId" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "users_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "user_roles" (
+    "id" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
+    "role" "RoleType" NOT NULL,
+    "scopeType" "ScopeType" NOT NULL,
+    "scopeId" TEXT,
+    "assignedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "assignedById" TEXT,
+
+    CONSTRAINT "user_roles_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "refresh_tokens" (
+    "id" TEXT NOT NULL,
+    "token" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
+    "expiresAt" TIMESTAMP(3) NOT NULL,
+    "revokedAt" TIMESTAMP(3),
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "ipAddress" TEXT,
+    "userAgent" TEXT,
+
+    CONSTRAINT "refresh_tokens_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "password_reset_tokens" (
+    "id" TEXT NOT NULL,
+    "token" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
+    "expiresAt" TIMESTAMP(3) NOT NULL,
+    "usedAt" TIMESTAMP(3),
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "password_reset_tokens_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -61,9 +110,15 @@ CREATE TABLE "service_plans" (
     "id" TEXT NOT NULL,
     "agreementReference" TEXT,
     "expiryDate" DATE,
-    "sparePartDiscountPercent" DECIMAL(10,2),
-    "yearlyPricing" JSONB,
+    "noOfFreeService" INTEGER NOT NULL,
+    "servicePerAnnum" INTEGER,
     "equipmentId" TEXT NOT NULL,
+    "serviceCosts" JSONB,
+    "labourCosts" JSONB,
+    "transportCosts" JSONB,
+    "otherCosts" JSONB,
+    "totalCosts" JSONB,
+    "sparePartsCosts" JSONB,
 
     CONSTRAINT "service_plans_pkey" PRIMARY KEY ("id")
 );
@@ -108,6 +163,19 @@ CREATE TABLE "equipment" (
 );
 
 -- CreateTable
+CREATE TABLE "equipment_disposals" (
+    "id" TEXT NOT NULL,
+    "equipmentId" TEXT NOT NULL,
+    "disposalDate" DATE,
+    "disposalMethod" TEXT,
+    "reason" TEXT NOT NULL,
+    "approvedByUserId" TEXT NOT NULL,
+    "approvalReference" TEXT,
+
+    CONSTRAINT "equipment_disposals_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
 CREATE TABLE "assignments" (
     "id" TEXT NOT NULL,
     "equipmentId" TEXT NOT NULL,
@@ -144,7 +212,7 @@ CREATE TABLE "repair_requests" (
 CREATE TABLE "work_orders" (
     "id" TEXT NOT NULL,
     "repairRequestId" TEXT NOT NULL,
-    "assignedTechnicianId" TEXT NOT NULL,
+    "assignedTechnicianId" TEXT,
     "assignedTechnicianName" TEXT,
     "diagnosisNotes" TEXT,
     "status" TEXT NOT NULL,
@@ -171,6 +239,7 @@ CREATE TABLE "parts_used" (
     "id" TEXT NOT NULL,
     "description" TEXT,
     "quantity" DECIMAL(10,2) NOT NULL,
+    "inventoryItemId" TEXT NOT NULL,
     "workOrderId" TEXT NOT NULL,
 
     CONSTRAINT "parts_used_pkey" PRIMARY KEY ("id")
@@ -216,6 +285,11 @@ CREATE TABLE "purchase_order_items" (
 -- CreateTable
 CREATE TABLE "grns" (
     "id" TEXT NOT NULL,
+    "purchaseOrderId" TEXT NOT NULL,
+    "poNumber" TEXT NOT NULL,
+    "grnNumber" TEXT NOT NULL,
+    "receivedDate" TIMESTAMP(3) NOT NULL,
+    "status" TEXT NOT NULL,
 
     CONSTRAINT "grns_pkey" PRIMARY KEY ("id")
 );
@@ -249,16 +323,40 @@ CREATE TABLE "seed_snapshot" (
 CREATE UNIQUE INDEX "users_username_key" ON "users"("username");
 
 -- CreateIndex
+CREATE UNIQUE INDEX "users_email_key" ON "users"("email");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "user_roles_userId_role_scopeId_key" ON "user_roles"("userId", "role", "scopeId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "refresh_tokens_token_key" ON "refresh_tokens"("token");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "password_reset_tokens_token_key" ON "password_reset_tokens"("token");
+
+-- CreateIndex
 CREATE UNIQUE INDEX "service_plans_equipmentId_key" ON "service_plans"("equipmentId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "equipment_disposals_equipmentId_key" ON "equipment_disposals"("equipmentId");
 
 -- AddForeignKey
 ALTER TABLE "institutions" ADD CONSTRAINT "institutions_districtId_fkey" FOREIGN KEY ("districtId") REFERENCES "districts"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "users" ADD CONSTRAINT "users_districtId_fkey" FOREIGN KEY ("districtId") REFERENCES "districts"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "users" ADD CONSTRAINT "users_institutionId_fkey" FOREIGN KEY ("institutionId") REFERENCES "institutions"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "users" ADD CONSTRAINT "users_institutionId_fkey" FOREIGN KEY ("institutionId") REFERENCES "institutions"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "user_roles" ADD CONSTRAINT "user_roles_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "user_roles" ADD CONSTRAINT "user_roles_assignedById_fkey" FOREIGN KEY ("assignedById") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "refresh_tokens" ADD CONSTRAINT "refresh_tokens_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "password_reset_tokens" ADD CONSTRAINT "password_reset_tokens_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "service_plans" ADD CONSTRAINT "service_plans_equipmentId_fkey" FOREIGN KEY ("equipmentId") REFERENCES "equipment"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
@@ -268,6 +366,9 @@ ALTER TABLE "equipment_components" ADD CONSTRAINT "equipment_components_equipmen
 
 -- AddForeignKey
 ALTER TABLE "equipment" ADD CONSTRAINT "equipment_assignedInstitutionId_fkey" FOREIGN KEY ("assignedInstitutionId") REFERENCES "institutions"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "equipment_disposals" ADD CONSTRAINT "equipment_disposals_equipmentId_fkey" FOREIGN KEY ("equipmentId") REFERENCES "equipment"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "assignments" ADD CONSTRAINT "assignments_equipmentId_fkey" FOREIGN KEY ("equipmentId") REFERENCES "equipment"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
@@ -285,13 +386,16 @@ ALTER TABLE "repair_requests" ADD CONSTRAINT "repair_requests_institutionId_fkey
 ALTER TABLE "work_orders" ADD CONSTRAINT "work_orders_repairRequestId_fkey" FOREIGN KEY ("repairRequestId") REFERENCES "repair_requests"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "work_orders" ADD CONSTRAINT "work_orders_assignedTechnicianId_fkey" FOREIGN KEY ("assignedTechnicianId") REFERENCES "users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "work_orders" ADD CONSTRAINT "work_orders_assignedTechnicianId_fkey" FOREIGN KEY ("assignedTechnicianId") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "work_orders" ADD CONSTRAINT "work_orders_institutionId_fkey" FOREIGN KEY ("institutionId") REFERENCES "institutions"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "inspected_components" ADD CONSTRAINT "inspected_components_workOrderId_fkey" FOREIGN KEY ("workOrderId") REFERENCES "work_orders"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "parts_used" ADD CONSTRAINT "parts_used_inventoryItemId_fkey" FOREIGN KEY ("inventoryItemId") REFERENCES "inventory_items"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "parts_used" ADD CONSTRAINT "parts_used_workOrderId_fkey" FOREIGN KEY ("workOrderId") REFERENCES "work_orders"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
