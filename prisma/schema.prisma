@@ -36,30 +36,9 @@ enum ScopeType {
 // HIERARCHY
 // ─────────────────────────────────────────────
 
-model District {
-  id           String        @id
-  name         String
-  institutions Institution[]
 
-  @@map("districts")
-}
 
-model Institution {
-  id             String          @id
-  name           String
-  email          String?
-  type           String
-  active         Boolean
-  districtId     String?
-  district       District?       @relation(fields: [districtId], references: [id])
-  users          User[]
-  equipment      Equipment[]
-  repairRequests RepairRequest[]
-  workOrders     WorkOrder[]     @relation("InstitutionWorkOrders")
-  auditLogs      AuditLog[]      @relation("InstitutionAuditLogs")
 
-  @@map("institutions")
-}
 
 // ─────────────────────────────────────────────
 // USER
@@ -90,6 +69,8 @@ model User {
   assignedRoles      UserRole[]           @relation("RoleAssignedBy")
 
   @@map("users")
+  @@index([institutionId])
+  @@index([active])
 }
 
 // ─────────────────────────────────────────────
@@ -122,6 +103,9 @@ model UserRole {
 
   @@unique([userId, role, scopeId])
   @@map("user_roles")
+  @@index([userId])
+  @@index([role])
+  @@index([scopeType, scopeId])
 }
 
 // ─────────────────────────────────────────────
@@ -167,6 +151,8 @@ model Supplier {
   performanceNotes String?
   rating           Int?
   purchaseOrders   PurchaseOrder[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@map("suppliers")
 }
@@ -184,8 +170,12 @@ model InventoryItem {
   unitOfMeasure     String
   costPerUnit       Decimal    @db.Decimal(10, 2)
   partsUsed         PartUsed[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@map("inventory_items")
+  @@index([name])
+  @@index([category])
 }
 
 // ─────────────────────────────────────────────
@@ -212,6 +202,8 @@ model ServicePlan {
   // Spare parts costs as array of JSON objects
   // e.g. [{ name: 'Battery', year1: 5000, year2: 5500, ... }]
   sparePartsCosts    Json?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@map("service_plans")
 }
@@ -227,17 +219,19 @@ model EquipmentComponent {
   expiryOrWarrantyDate DateTime? @db.Date
   equipmentId          String
   equipment            Equipment @relation(fields: [equipmentId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@map("equipment_components")
 }
 
 model Equipment {
-  id                    String               @id
+  id                    String @id @default(cuid())
   name                  String
   description           String?
   category              String
-  manufacturer          String
-  countryOfOrigin       String
+  manufacturer          String?
+  countryOfOrigin       String?
   supplierName          String?
   tenderNumber          String?
   purchaseOrderNumber   String?
@@ -256,12 +250,20 @@ model Equipment {
   assignments           Assignment[]
   repairRequests        RepairRequest[]
   disposal              EquipmentDisposal?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@map("equipment")
+  @@index([status])
+  @@index([category])
+  @@index([assignedInstitutionId])
+  @@index([name])
+  @@index([serialNumber])
+  @@index([modelNumber])
 }
 
 model EquipmentDisposal {
-  id                String    @id
+  id                String    @id @default(cuid())
   equipmentId       String    @unique
   disposalDate      DateTime? @db.Date
   disposalMethod    String?
@@ -269,6 +271,8 @@ model EquipmentDisposal {
   approvedByUserId  String
   approvalReference String?
   equipment         Equipment @relation(fields: [equipmentId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@map("equipment_disposals")
 }
@@ -283,8 +287,13 @@ model Assignment {
   quantity       Decimal   @db.Decimal(10, 2)
   assignmentDate DateTime
   status         String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@map("assignments")
+  @@index([equipmentId])
+  @@index([toEntityId])
+  @@index([assignmentDate])
 }
 
 // ─────────────────────────────────────────────
@@ -309,8 +318,14 @@ model RepairRequest {
   institution           Institution @relation(fields: [institutionId], references: [id])
   institutionName       String?
   workOrders            WorkOrder[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@map("repair_requests")
+  @@index([institutionId])
+  @@index([equipmentId])
+  @@index([submittedByUserId])
+  @@index([priority])
 }
 
 model WorkOrder {
@@ -327,8 +342,14 @@ model WorkOrder {
   partsUsed              PartUsed[]
   institutionId          String?
   institution            Institution?         @relation("InstitutionWorkOrders", fields: [institutionId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@map("work_orders")
+  @@index([status])
+  @@index([institutionId])
+  @@index([assignedTechnicianId])
+  @@index([repairRequestId])
 }
 
 model InspectedComponent {
@@ -339,6 +360,8 @@ model InspectedComponent {
   conditionNotes String?
   workOrderId    String
   workOrder      WorkOrder @relation(fields: [workOrderId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@map("inspected_components")
 }
@@ -351,6 +374,8 @@ model PartUsed {
   inventoryItem   InventoryItem @relation(fields: [inventoryItemId], references: [id])
   workOrderId     String
   workOrder       WorkOrder     @relation(fields: [workOrderId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@map("parts_used")
 }
@@ -366,6 +391,8 @@ model ProcurementPlan {
   estimatedCost     Decimal         @db.Decimal(10, 2)
   procurementMethod String
   purchaseOrders    PurchaseOrder[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@map("procurement_plans")
 }
@@ -382,8 +409,13 @@ model PurchaseOrder {
   approvalStatus String
   totalCost      Decimal             @db.Decimal(10, 2)
   items          PurchaseOrderItem[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@map("purchase_orders")
+  @@index([supplierId])
+  @@index([approvalStatus])
+  @@index([orderDate])
 }
 
 model PurchaseOrderItem {
@@ -394,6 +426,8 @@ model PurchaseOrderItem {
   category        String
   purchaseOrderId String
   purchaseOrder   PurchaseOrder @relation(fields: [purchaseOrderId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@map("purchase_order_items")
 }
@@ -405,7 +439,9 @@ model Grn {
   grnNumber       String
   receivedDate    DateTime
   status          String
-
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
   @@map("grns")
 }
 
@@ -428,6 +464,11 @@ model AuditLog {
   institution   Institution? @relation("InstitutionAuditLogs", fields: [institutionId], references: [id])
 
   @@map("audit_logs")
+  @@index([timestamp])
+  @@index([userId])
+  @@index([institutionId])
+  @@index([entityName])
+  @@index([recordId])
 }
 
 // ─────────────────────────────────────────────

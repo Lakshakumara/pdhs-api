@@ -5,9 +5,10 @@
 // npx prisma migrate dev Creates SQL migration files + runs them
 // npx prisma migrate dev --name init
 
-// npxprisma migrate reset reset the db
+// npx prisma migrate reset reset the db
 // npx prisma studio Opens visual database browser
 // npx prisma db pull Reads existing DB and generates schema
+// npx prisma db seed-data
 
 import "dotenv/config";
 import { defineConfig } from "prisma/config";

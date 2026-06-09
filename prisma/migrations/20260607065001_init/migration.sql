@@ -88,6 +88,8 @@ CREATE TABLE "suppliers" (
     "email" TEXT,
     "performanceNotes" TEXT,
     "rating" INTEGER,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "suppliers_pkey" PRIMARY KEY ("id")
 );
@@ -101,6 +103,8 @@ CREATE TABLE "inventory_items" (
     "minStockThreshold" DECIMAL(10,2) NOT NULL,
     "unitOfMeasure" TEXT NOT NULL,
     "costPerUnit" DECIMAL(10,2) NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "inventory_items_pkey" PRIMARY KEY ("id")
 );
@@ -119,6 +123,8 @@ CREATE TABLE "service_plans" (
     "otherCosts" JSONB,
     "totalCosts" JSONB,
     "sparePartsCosts" JSONB,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "service_plans_pkey" PRIMARY KEY ("id")
 );
@@ -134,6 +140,8 @@ CREATE TABLE "equipment_components" (
     "componentType" TEXT NOT NULL,
     "expiryOrWarrantyDate" DATE,
     "equipmentId" TEXT NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "equipment_components_pkey" PRIMARY KEY ("id")
 );
@@ -158,6 +166,8 @@ CREATE TABLE "equipment" (
     "warrantyPeriodMonths" INTEGER,
     "status" TEXT NOT NULL,
     "assignedInstitutionId" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "equipment_pkey" PRIMARY KEY ("id")
 );
@@ -171,6 +181,8 @@ CREATE TABLE "equipment_disposals" (
     "reason" TEXT NOT NULL,
     "approvedByUserId" TEXT NOT NULL,
     "approvalReference" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "equipment_disposals_pkey" PRIMARY KEY ("id")
 );
@@ -185,6 +197,8 @@ CREATE TABLE "assignments" (
     "quantity" DECIMAL(10,2) NOT NULL,
     "assignmentDate" TIMESTAMP(3) NOT NULL,
     "status" TEXT NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "assignments_pkey" PRIMARY KEY ("id")
 );
@@ -204,6 +218,8 @@ CREATE TABLE "repair_requests" (
     "submissionDate" TIMESTAMP(3) NOT NULL,
     "institutionId" TEXT NOT NULL,
     "institutionName" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "repair_requests_pkey" PRIMARY KEY ("id")
 );
@@ -218,6 +234,8 @@ CREATE TABLE "work_orders" (
     "status" TEXT NOT NULL,
     "statusDate" TIMESTAMP(3) NOT NULL,
     "institutionId" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "work_orders_pkey" PRIMARY KEY ("id")
 );
@@ -230,6 +248,8 @@ CREATE TABLE "inspected_components" (
     "inspected" BOOLEAN NOT NULL,
     "conditionNotes" TEXT,
     "workOrderId" TEXT NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "inspected_components_pkey" PRIMARY KEY ("id")
 );
@@ -241,6 +261,8 @@ CREATE TABLE "parts_used" (
     "quantity" DECIMAL(10,2) NOT NULL,
     "inventoryItemId" TEXT NOT NULL,
     "workOrderId" TEXT NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "parts_used_pkey" PRIMARY KEY ("id")
 );
@@ -252,6 +274,8 @@ CREATE TABLE "procurement_plans" (
     "estimatedQuantity" DECIMAL(10,2) NOT NULL,
     "estimatedCost" DECIMAL(10,2) NOT NULL,
     "procurementMethod" TEXT NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "procurement_plans_pkey" PRIMARY KEY ("id")
 );
@@ -266,6 +290,8 @@ CREATE TABLE "purchase_orders" (
     "orderDate" TIMESTAMP(3) NOT NULL,
     "approvalStatus" TEXT NOT NULL,
     "totalCost" DECIMAL(10,2) NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "purchase_orders_pkey" PRIMARY KEY ("id")
 );
@@ -278,6 +304,8 @@ CREATE TABLE "purchase_order_items" (
     "unitCost" DECIMAL(10,2) NOT NULL,
     "category" TEXT NOT NULL,
     "purchaseOrderId" TEXT NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "purchase_order_items_pkey" PRIMARY KEY ("id")
 );
@@ -290,6 +318,8 @@ CREATE TABLE "grns" (
     "grnNumber" TEXT NOT NULL,
     "receivedDate" TIMESTAMP(3) NOT NULL,
     "status" TEXT NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "grns_pkey" PRIMARY KEY ("id")
 );
@@ -320,10 +350,37 @@ CREATE TABLE "seed_snapshot" (
 );
 
 -- CreateIndex
+CREATE INDEX "districts_name_idx" ON "districts"("name");
+
+-- CreateIndex
+CREATE INDEX "institutions_name_idx" ON "institutions"("name");
+
+-- CreateIndex
+CREATE INDEX "institutions_districtId_idx" ON "institutions"("districtId");
+
+-- CreateIndex
+CREATE INDEX "institutions_active_idx" ON "institutions"("active");
+
+-- CreateIndex
 CREATE UNIQUE INDEX "users_username_key" ON "users"("username");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "users_email_key" ON "users"("email");
+
+-- CreateIndex
+CREATE INDEX "users_institutionId_idx" ON "users"("institutionId");
+
+-- CreateIndex
+CREATE INDEX "users_active_idx" ON "users"("active");
+
+-- CreateIndex
+CREATE INDEX "user_roles_userId_idx" ON "user_roles"("userId");
+
+-- CreateIndex
+CREATE INDEX "user_roles_role_idx" ON "user_roles"("role");
+
+-- CreateIndex
+CREATE INDEX "user_roles_scopeType_scopeId_idx" ON "user_roles"("scopeType", "scopeId");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "user_roles_userId_role_scopeId_key" ON "user_roles"("userId", "role", "scopeId");
@@ -335,10 +392,91 @@ CREATE UNIQUE INDEX "refresh_tokens_token_key" ON "refresh_tokens"("token");
 CREATE UNIQUE INDEX "password_reset_tokens_token_key" ON "password_reset_tokens"("token");
 
 -- CreateIndex
+CREATE INDEX "inventory_items_name_idx" ON "inventory_items"("name");
+
+-- CreateIndex
+CREATE INDEX "inventory_items_category_idx" ON "inventory_items"("category");
+
+-- CreateIndex
 CREATE UNIQUE INDEX "service_plans_equipmentId_key" ON "service_plans"("equipmentId");
 
 -- CreateIndex
+CREATE INDEX "equipment_status_idx" ON "equipment"("status");
+
+-- CreateIndex
+CREATE INDEX "equipment_category_idx" ON "equipment"("category");
+
+-- CreateIndex
+CREATE INDEX "equipment_assignedInstitutionId_idx" ON "equipment"("assignedInstitutionId");
+
+-- CreateIndex
+CREATE INDEX "equipment_name_idx" ON "equipment"("name");
+
+-- CreateIndex
+CREATE INDEX "equipment_serialNumber_idx" ON "equipment"("serialNumber");
+
+-- CreateIndex
+CREATE INDEX "equipment_modelNumber_idx" ON "equipment"("modelNumber");
+
+-- CreateIndex
 CREATE UNIQUE INDEX "equipment_disposals_equipmentId_key" ON "equipment_disposals"("equipmentId");
+
+-- CreateIndex
+CREATE INDEX "assignments_equipmentId_idx" ON "assignments"("equipmentId");
+
+-- CreateIndex
+CREATE INDEX "assignments_toEntityId_idx" ON "assignments"("toEntityId");
+
+-- CreateIndex
+CREATE INDEX "assignments_assignmentDate_idx" ON "assignments"("assignmentDate");
+
+-- CreateIndex
+CREATE INDEX "repair_requests_institutionId_idx" ON "repair_requests"("institutionId");
+
+-- CreateIndex
+CREATE INDEX "repair_requests_equipmentId_idx" ON "repair_requests"("equipmentId");
+
+-- CreateIndex
+CREATE INDEX "repair_requests_submittedByUserId_idx" ON "repair_requests"("submittedByUserId");
+
+-- CreateIndex
+CREATE INDEX "repair_requests_priority_idx" ON "repair_requests"("priority");
+
+-- CreateIndex
+CREATE INDEX "work_orders_status_idx" ON "work_orders"("status");
+
+-- CreateIndex
+CREATE INDEX "work_orders_institutionId_idx" ON "work_orders"("institutionId");
+
+-- CreateIndex
+CREATE INDEX "work_orders_assignedTechnicianId_idx" ON "work_orders"("assignedTechnicianId");
+
+-- CreateIndex
+CREATE INDEX "work_orders_repairRequestId_idx" ON "work_orders"("repairRequestId");
+
+-- CreateIndex
+CREATE INDEX "purchase_orders_supplierId_idx" ON "purchase_orders"("supplierId");
+
+-- CreateIndex
+CREATE INDEX "purchase_orders_approvalStatus_idx" ON "purchase_orders"("approvalStatus");
+
+-- CreateIndex
+CREATE INDEX "purchase_orders_orderDate_idx" ON "purchase_orders"("orderDate");
+
+-- CreateIndex
+CREATE INDEX "audit_logs_timestamp_idx" ON "audit_logs"("timestamp");
+
+-- CreateIndex
+CREATE INDEX "audit_logs_userId_idx" ON "audit_logs"("userId");
+
+-- CreateIndex
+CREATE INDEX "audit_logs_institutionId_idx" ON "audit_logs"("institutionId");
+
+-- CreateIndex
+CREATE INDEX "audit_logs_entityName_idx" ON "audit_logs"("entityName");
+
+-- CreateIndex
+CREATE INDEX "audit_logs_recordId_idx" ON "audit_logs"("recordId");
 
 -- AddForeignKey
 ALTER TABLE "institutions" ADD CONSTRAINT "institutions_districtId_fkey" FOREIGN KEY ("districtId") REFERENCES "districts"("id") ON DELETE SET NULL ON UPDATE CASCADE;

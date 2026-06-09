@@ -7,9 +7,12 @@ import {
   IsArray,
   ValidateNested,
   IsIn,
+  IsJSON,
+  isString,
 } from 'class-validator'
 import { Type } from 'class-transformer'
 import { TransformDate } from '../common/decorators/transform-date.decorator'
+import { BaseQueryDto } from './genericDto'
 
 // ─────────────────────────────────────────────
 // DISTRICT
@@ -69,6 +72,17 @@ export class UpdateInstitutionDto {
   districtId?: string
 }
 
+export class QueryInstitutionDto extends BaseQueryDto {
+
+  @IsOptional()
+  name?: string
+
+  @IsOptional()
+  type?: string
+
+  @IsOptional()
+  districtId?: string
+}
 // ─────────────────────────────────────────────
 // USER
 // ─────────────────────────────────────────────
@@ -85,7 +99,7 @@ export class CreateUserDto {
 
   @IsOptional()
   @IsString()
-  email?: string|null
+  email?: string | null
 
   @IsString()
   @IsIn([
@@ -95,19 +109,19 @@ export class CreateUserDto {
     'INSTITUTION_USER'
   ])
   role!: string
-@IsBoolean()
-  mustChangePassword!:boolean
-  
+  @IsBoolean()
+  mustChangePassword!: boolean
+
   @IsBoolean()
   active!: boolean
 
   @IsOptional()
   @IsString()
-  districtId?: string|null
+  districtId?: string | null
 
   @IsOptional()
   @IsString()
-  institutionId?: string|null
+  institutionId?: string | null
 }
 
 export class UpdateUserDto {
@@ -259,16 +273,37 @@ export class CreateServicePlanDto {
   @TransformDate()                   // "2029-06-20" → Date
   expiryDate?: Date
 
+  @IsNumber()
+  noOfFreeService!: number
+
   @IsOptional()
   @IsNumber()
-  sparePartDiscountPercent?: number
+  servicePerAnnum?: number
 
   @IsOptional()
-  yearlyPricing?: Record<string, number>
+  serviceCosts?: Record<string, any>
 
+  @IsOptional()
+  labourCosts?: Record<string, any>
+
+  @IsOptional()
+  transportCosts?: Record<string, any>
+  
+  @IsOptional()
+  otherCosts?: Record<string, any>
+
+  @IsOptional()
+  totalCosts?: Record<string, any>
+
+  @IsOptional()
+  sparePartsCosts?: Record<string, any>
+
+  @IsOptional()
   @IsString()
   equipmentId!: string
 }
+
+
 
 export class UpdateServicePlanDto {
   @IsOptional()
@@ -320,6 +355,7 @@ export class CreateEquipmentComponentDto {
   @TransformDate()                   // "2025-04-15" → Date
   expiryOrWarrantyDate?: Date
 
+  @IsOptional()
   @IsString()
   equipmentId!: string
 }
@@ -359,6 +395,7 @@ export class UpdateEquipmentComponentDto {
 // ─────────────────────────────────────────────
 
 export class CreateEquipmentDto {
+  @IsOptional()
   @IsString()
   id?: string
 
@@ -370,11 +407,13 @@ export class CreateEquipmentDto {
   description?: string
 
   @IsString()
-  category?: string
+  category!: string
 
+  @IsOptional()
   @IsString()
   manufacturer?: string
 
+  @IsOptional()
   @IsString()
   countryOfOrigin?: string
 
@@ -403,7 +442,7 @@ export class CreateEquipmentDto {
   batchNumber?: string
 
   @IsNumber()
-  quantityReceived?: number
+  quantityReceived!: number
 
   @IsOptional()
   @TransformDate()                   // "2024-02-15" → Date
@@ -441,59 +480,100 @@ export class CreateEquipmentDto {
 export class UpdateEquipmentDto {
   @IsOptional()
   @IsString()
-  name?: string
+  id?: string;
 
   @IsOptional()
   @IsString()
-  description?: string
+  name?: string;
 
   @IsOptional()
   @IsString()
-  category?: string
+  description?: string;
 
   @IsOptional()
   @IsString()
-  manufacturer?: string
+  category?: string;
 
   @IsOptional()
   @IsString()
-  countryOfOrigin?: string
+  manufacturer?: string;
 
   @IsOptional()
   @IsString()
-  supplierName?: string
+  countryOfOrigin?: string;
 
   @IsOptional()
   @IsString()
-  tenderNumber?: string
+  supplierName?: string;
 
   @IsOptional()
   @IsString()
-  serialNumber?: string
+  tenderNumber?: string;
 
   @IsOptional()
+  @IsString()
+  purchaseOrderNumber?: string;
+
+  @IsOptional()
+  @IsString()
+  modelNumber?: string;
+
+  @IsOptional()
+  @IsString()
+  serialNumber?: string;
+
+  @IsOptional()
+  @IsString()
+  batchNumber?: string;
+
+  @IsOptional()
+  @Type(() => Number)
   @IsNumber()
-  quantityReceived?: number
+  quantityReceived?: number;
 
   @IsOptional()
-  @TransformDate()
-  dateOfManufacture?: Date
+  @Type(() => Date)
+  dateOfManufacture?: Date;
 
   @IsOptional()
-  @TransformDate()
-  dateOfReceipt?: Date
+  @Type(() => Date)
+  dateOfReceipt?: Date;
 
   @IsOptional()
   @IsInt()
-  warrantyPeriodMonths?: number
+  warrantyPeriodMonths?: number;
 
   @IsOptional()
   @IsString()
-  status?: string
+  status?: string;
 
   @IsOptional()
   @IsString()
-  assignedInstitutionId?: string
+  assignedInstitutionId?: string;
+
+  // Nested update strategy (recommended: replace or partial update)
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => CreateServicePlanDto)
+  servicePlan?: CreateServicePlanDto;
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => CreateEquipmentComponentDto)
+  components?: CreateEquipmentComponentDto[];
+}
+
+export class QueryEquipmentDto extends BaseQueryDto {
+
+  @IsOptional()
+  category?: string;
+
+  @IsOptional()
+  status?: string;
+
+  @IsOptional()
+  assignedInstitutionId?: string;
 }
 
 // ─────────────────────────────────────────────
@@ -906,4 +986,17 @@ export class CreateAuditLogDto {
   @IsOptional()
   @IsString()
   institutionId?: string
+}
+
+export interface PagedResult<T> {
+
+  items: T[];
+
+  page: number;
+
+  size: number;
+
+  total: number;
+
+  totalPages: number;
 }

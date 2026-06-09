@@ -32,28 +32,3 @@ export class PrismaService
     await this.pool.end();
   }
 }
-
-/*
-console.log('DATABASE_URL =', process.env.DATABASE_URL);
-
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-})
-
-const adapter = new PrismaPg(pool, { schema: 'pdhs' })
-
-@Injectable()
-export class PrismaService extends PrismaClient implements OnModuleInit, OnModuleDestroy {
-  constructor() {
-    super({ adapter })
-  }
-
-  async onModuleInit() {
-    await this.$connect();
-  }
-
-  async onModuleDestroy() {
-    await this.$disconnect();
-    await pool.end()
-  }
-}*/

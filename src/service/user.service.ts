@@ -1,8 +1,8 @@
 // users.service.ts
 
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { PrismaService } from './prisma.service';
-import { UserDto } from './dto/user.dto';
+import { PrismaService } from '../prisma.service';
+import { UserDto } from '../dto/user.dto';
 
 @Injectable()
 export class UsersService {
@@ -56,4 +56,27 @@ export class UsersService {
       }))
     };
   }
+  /*
+  @Get()
+async getUsers(
+  @Req() req
+) {
+
+  const activeRole =
+    req.user.activeRole;
+
+  this.permissionService.require(
+    activeRole.role,
+    Permission.USER_VIEW
+  );
+
+  const where =
+    this.scopeService.userWhere(
+      activeRole
+    );
+
+  return this.prisma.user.findMany({
+    where
+  });
+}*/
 }
