@@ -2,7 +2,7 @@ import {
   Controller, Get, Headers,
   Query
 } from '@nestjs/common';
-import { QueryEquipmentDto, QueryInstitutionDto } from 'src/dto/index.dto';
+import { QueryEquipmentDto, QueryInstitutionDto, QueryInventoryDto, QueryRepairRequestDto, QueryWorkOrdertDto } from 'src/dto/index.dto';
 import { EquipmentService } from 'src/service/equipment.service';
 import { QueryService } from 'src/service/query.service';
 
@@ -10,20 +10,58 @@ import { QueryService } from 'src/service/query.service';
 export class QueryController {
   constructor(private readonly eqService: EquipmentService, private readonly service: QueryService) { }
 
-   @Get('/institute')
-    getAccessibleInstitutions(
-        @Headers('x-role') role: string,
-        @Headers('x-scope-type') scopeType: string,
-        @Headers('x-scope-id') scopeId: string,
-        @Query() query: QueryInstitutionDto) {
-        const activeRole = {
-            role,
-            scopeType,
-            scopeId
-        };
-        console.log('Query  Institute', activeRole, query)
-        return this.service.findInstitute(activeRole, query);
-    }
+   @Get('/dashboard/summary')
+  getDashboardSumarry(
+    @Headers('x-role') role: string,
+    @Headers('x-scope-type') scopeType: string,
+    @Headers('x-scope-id') scopeId: string,) {
+    const activeRole = {
+      role,
+      scopeType,
+      scopeId
+    };
+    return this.service.getDashboardSumarry(activeRole);
+  }
+
+  @Get('/dashboard/category-distribution')
+  getCategoryDistribution(
+    @Headers('x-role') role: string,
+    @Headers('x-scope-type') scopeType: string,
+    @Headers('x-scope-id') scopeId: string,) {
+    const activeRole = {
+      role,
+      scopeType,
+      scopeId
+    };
+    return this.service.getCategoryDistribution(activeRole);
+  }
+
+  @Get('/dashboard/urgent-repairs')
+  getUrgentRepairs(
+    @Headers('x-role') role: string,
+    @Headers('x-scope-type') scopeType: string,
+    @Headers('x-scope-id') scopeId: string,) {
+    const activeRole = {
+      role,
+      scopeType,
+      scopeId
+    };
+    return this.service.getUrgentRepairs(activeRole);
+  }
+
+  @Get('/institute')
+  getAccessibleInstitutions(
+    @Headers('x-role') role: string,
+    @Headers('x-scope-type') scopeType: string,
+    @Headers('x-scope-id') scopeId: string,
+    @Query() query: QueryInstitutionDto) {
+    const activeRole = {
+      role,
+      scopeType,
+      scopeId
+    };
+    return this.service.findInstitute(activeRole, query);
+  }
 
   @Get('/equipment')
   findEquipment(
@@ -31,13 +69,57 @@ export class QueryController {
     @Headers('x-scope-type') scopeType: string,
     @Headers('x-scope-id') scopeId: string,
     @Query() query: QueryEquipmentDto) {
-      const activeRole = {
+    const activeRole = {
       role,
       scopeType,
       scopeId
     };
-    console.log('Query Equipment ', activeRole, query)
+    //console.log('Query Equipment ', activeRole, query)
     return this.service.findEquipment(activeRole, query);
+  }
+
+  @Get('/repair-requests')
+  findREpairRequest(
+    @Headers('x-role') role: string,
+    @Headers('x-scope-type') scopeType: string,
+    @Headers('x-scope-id') scopeId: string,
+    @Query() query: QueryRepairRequestDto) {
+    const activeRole = {
+      role,
+      scopeType,
+      scopeId
+    };
+    console.log('Query RepairRequestDto ', activeRole, query)
+    return this.service.findRepairRequest(activeRole, query);
+  }
+
+  @Get('work-orders')
+  async getWorkOrders(
+    @Headers('x-role') role: string,
+    @Headers('x-scope-type') scopeType: string,
+    @Headers('x-scope-id') scopeId: string,
+    @Query() query: QueryWorkOrdertDto) {
+    const activeRole = {
+      role,
+      scopeType,
+      scopeId
+    };
+    console.log('Query getWorkOrders ', activeRole, query)
+    return this.service.findWorkOrders(activeRole, query);
+  }
+
+ @Get('inventory-items')
+  async getInventoryItems( @Headers('x-role') role: string,
+    @Headers('x-scope-type') scopeType: string,
+    @Headers('x-scope-id') scopeId: string,
+    @Query() query: QueryInventoryDto) {
+    const activeRole = {
+      role,
+      scopeType,
+      scopeId
+    };
+    console.log('nventory Item hit', query)
+    return this.service.inventoryItem(activeRole,query);
   }
 
   /*

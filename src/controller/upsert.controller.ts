@@ -6,6 +6,23 @@ import { UpsertService } from 'src/service/upsert.service';
 export class UpsertController {
   constructor(private readonly service: UpsertService) { }
 
+// Update Work Order Status
+  @Put('work-orders/:id/status')
+  async updateWorkOrderStatus(
+    @Headers('x-role') role: string,
+    @Headers('x-scope-type') scopeType: string,
+    @Headers('x-scope-id') scopeId: string,
+    @Param('id') workOrderId: string,
+    @Body() body: { status: string; payload?: any },
+  ) {
+    const activeRole = {
+      role,
+      scopeType,
+      scopeId
+    };
+    return this.service.updateWorkOrderStatus(activeRole,workOrderId, body);
+  }
+
   @Post('/equipment/add')
   addEquipment(
     @Headers('x-role') role: string,
@@ -38,7 +55,6 @@ export class UpsertController {
     return this.service.updateEquipment(activeRole, id, data);
   }
 
-
   // Assign Equipment
   @Post('equipment/:id/assign')
   assignEquipment(
@@ -58,6 +74,9 @@ export class UpsertController {
       body.toInstitutionId,
       body.toEntity, body.quantity);
   }
+
+
+
 
   /*
             // Add Equipment

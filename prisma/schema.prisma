@@ -36,9 +36,30 @@ enum ScopeType {
 // HIERARCHY
 // ─────────────────────────────────────────────
 
+model District {
+  id           String        @id
+  name         String
+  institutions Institution[]
 
+  @@map("districts")
+}
 
+model Institution {
+  id             String          @id
+  name           String
+  email          String?
+  type           String
+  active         Boolean
+  districtId     String?
+  district       District?       @relation(fields: [districtId], references: [id])
+  users          User[]
+  equipment      Equipment[]
+  repairRequests RepairRequest[]
+  workOrders     WorkOrder[]     @relation("InstitutionWorkOrders")
+  auditLogs      AuditLog[]      @relation("InstitutionAuditLogs")
 
+  @@map("institutions")
+}
 
 // ─────────────────────────────────────────────
 // USER
@@ -304,19 +325,24 @@ model RepairRequest {
   id                    String      @id
   equipmentId           String
   equipment             Equipment   @relation(fields: [equipmentId], references: [id])
+ 
   equipmentName         String?
   equipmentSerialNumber String?
-  componentId           String?
   componentName         String?
+  institutionName       String?
+  submittedByUserName   String?
+
+  componentId           String?
+  
   faultDescription      String?
   priority              String
   submittedByUserId     String
   submittedByUser       User        @relation(fields: [submittedByUserId], references: [id])
-  submittedByUserName   String?
+
   submissionDate        DateTime
   institutionId         String
   institution           Institution @relation(fields: [institutionId], references: [id])
-  institutionName       String?
+ 
   workOrders            WorkOrder[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

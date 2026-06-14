@@ -3,6 +3,8 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma.service';
 import { UserDto } from '../dto/user.dto';
+import { Permission } from 'src/auth/permission.enum';
+import { ROLE_PERMISSIONS } from 'src/auth/role-permissions';
 
 @Injectable()
 export class UsersService {
@@ -51,6 +53,7 @@ export class UsersService {
         role: role.role,
         scopeType: role.scopeType,
         scopeId: role.scopeId,
+        permission: ROLE_PERMISSIONS[role.role] || null,
         assignedAt: role.assignedAt,
         assignedById: role.assignedById
       }))

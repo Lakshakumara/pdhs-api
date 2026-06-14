@@ -1,0 +1,1 @@
+export type RepairPriority = 'Routine' | 'Urgent' | 'Emergency';

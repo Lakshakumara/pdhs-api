@@ -256,7 +256,14 @@ export class UpdateInventoryItemDto {
   @IsNumber()
   costPerUnit?: number
 }
+export class QueryInventoryDto extends BaseQueryDto {
 
+  @IsOptional()
+  name?: string;
+
+  @IsOptional()
+  categoruy?: string;
+}
 // ─────────────────────────────────────────────
 // SERVICE PLAN
 // ─────────────────────────────────────────────
@@ -288,7 +295,7 @@ export class CreateServicePlanDto {
 
   @IsOptional()
   transportCosts?: Record<string, any>
-  
+
   @IsOptional()
   otherCosts?: Record<string, any>
 
@@ -679,6 +686,14 @@ export class UpdateRepairRequestDto {
   priority?: string
 }
 
+export class QueryRepairRequestDto extends BaseQueryDto {
+
+  @IsOptional()
+  category?: string;
+
+  @IsOptional()
+  status?: string;
+}
 // ─────────────────────────────────────────────
 // INSPECTED COMPONENT
 // ─────────────────────────────────────────────
@@ -800,6 +815,14 @@ export class UpdateWorkOrderDto {
   institutionId?: string
 }
 
+export class QueryWorkOrdertDto extends BaseQueryDto {
+
+  @IsOptional()
+  repairRequestId?: string
+
+  @IsOptional()
+  status?: string;
+}
 // ─────────────────────────────────────────────
 // PROCUREMENT PLAN
 // ─────────────────────────────────────────────

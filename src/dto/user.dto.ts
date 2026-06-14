@@ -1,3 +1,5 @@
+import { Permission } from "src/auth/permission.enum";
+
 export interface UserDto {
   id: string;
   username: string;
@@ -21,6 +23,7 @@ export interface UserRoleDto {
   role: string;
   scopeType: string;
   scopeId: string | null;
+  permission: Permission[] | null
   assignedAt: Date;
   assignedById: string | null;
 }

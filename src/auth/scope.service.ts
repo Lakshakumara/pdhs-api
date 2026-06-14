@@ -70,13 +70,9 @@ export class ScopeService {
     }
   }
 
-  userWhere(
-    activeRole: any
-  ) {
+  scopeWhere(activeRole: any) {
 
-    switch (
-    activeRole.scopeType
-    ) {
+    switch (activeRole.scopeType) {
 
       case 'PDHS':
 
