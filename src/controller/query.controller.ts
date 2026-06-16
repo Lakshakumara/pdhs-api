@@ -1,4 +1,102 @@
 import {
+  Controller, Get,
+  Query, UseGuards
+} from '@nestjs/common';
+import {
+  QueryEquipmentDto, QueryInstitutionDto, QueryInventoryDto,
+  QueryRepairRequestDto, QueryWorkOrdertDto
+} from 'src/dto/index.dto';
+import { EquipmentService } from 'src/service/equipment.service';
+import { QueryService } from 'src/service/query.service';
+import { ActiveRole } from 'src/auth/active.role';
+import { ActiveRoleGuard, JwtAuthGuard } from 'src/auth/auth.guard';
+import type { JwtRoleClaim } from 'src/auth/jwt-payload.interface';
+
+/**
+ * Guard chain applied once at the controller level — every route below
+ * automatically gets:
+ *   1. JwtAuthGuard    → verifies the JWT, populates req.user
+ *   2. ActiveRoleGuard → resolves req.activeRole from req.user.roles +
+ *                        x-role/x-scope-* headers (validated against the
+ *                        signed JWT, not trusted blindly)
+ *
+ * Permission checks (PermissionService.require) and row-level scoping
+ * (ScopeService.xxxWhere) remain in QueryService — unchanged. This guard
+ * chain only removes the repetitive @Headers() boilerplate that used to
+ * appear on every method.
+ */
+@UseGuards(JwtAuthGuard, ActiveRoleGuard)
+@Controller('api')
+export class QueryController {
+  constructor(
+    private readonly eqService: EquipmentService,
+    private readonly service: QueryService,
+  ) {}
+
+  @Get('/dashboard/summary')
+  getDashboardSumarry(@ActiveRole() activeRole: JwtRoleClaim) {
+    return this.service.getDashboardSumarry(activeRole);
+  }
+
+  @Get('/dashboard/category-distribution')
+  getCategoryDistribution(@ActiveRole() activeRole: JwtRoleClaim) {
+    return this.service.getCategoryDistribution(activeRole);
+  }
+
+  @Get('/dashboard/urgent-repairs')
+  getUrgentRepairs(@ActiveRole() activeRole: JwtRoleClaim) {
+    return this.service.getUrgentRepairs(activeRole);
+  }
+
+  @Get('/dashboard/organization-tree')
+  getOrganizationTree(@ActiveRole() activeRole: JwtRoleClaim) {
+    return this.service.organizationTree(activeRole);
+  }
+
+  @Get('/institute')
+  getAccessibleInstitutions(
+    @ActiveRole() activeRole: JwtRoleClaim,
+    @Query() query: QueryInstitutionDto,
+  ) {
+    return this.service.findInstitute(activeRole, query);
+  }
+
+  @Get('/equipment')
+  findEquipment(
+    @ActiveRole() activeRole: JwtRoleClaim,
+    @Query() query: QueryEquipmentDto,
+  ) {
+    return this.service.findEquipment(activeRole, query);
+  }
+
+  @Get('/repair-requests')
+  findRepairRequest(
+    @ActiveRole() activeRole: JwtRoleClaim,
+    @Query() query: QueryRepairRequestDto,
+  ) {
+    return this.service.findRepairRequest(activeRole, query);
+  }
+
+  @Get('work-orders')
+  async getWorkOrders(
+    @ActiveRole() activeRole: JwtRoleClaim,
+    @Query() query: QueryWorkOrdertDto,
+  ) {
+    return this.service.findWorkOrders(activeRole, query);
+  }
+
+  @Get('inventory-items')
+  async getInventoryItems(
+    @ActiveRole() activeRole: JwtRoleClaim,
+    @Query() query: QueryInventoryDto,
+  ) {
+    return this.service.inventoryItem(activeRole, query);
+  }
+}
+
+
+
+/*import {
   Controller, Get, Headers,
   Query
 } from '@nestjs/common';
@@ -47,6 +145,20 @@ export class QueryController {
       scopeId
     };
     return this.service.getUrgentRepairs(activeRole);
+  }
+
+  @Get('/dashboard/organization-tree')
+  getOrganizationTree(@Headers('x-role') role: string,
+    @Headers('x-scope-type') scopeType: string,
+    @Headers('x-scope-id') scopeId: string,) {
+    const activeRole = {
+      role,
+      scopeType,
+      scopeId
+    };
+    return this.service.organizationTree(
+      activeRole
+    );
   }
 
   @Get('/institute')
@@ -208,4 +320,4 @@ export class QueryController {
       
             */
 
-}
+/*}*/

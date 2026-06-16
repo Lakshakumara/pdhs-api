@@ -1,4 +1,69 @@
-import { Body, Controller, Headers, Param, Post, Put } from '@nestjs/common';
+import { Body, Controller, Param, Post, Put, UseGuards } from '@nestjs/common';
+import { CreateEquipmentDto, UpdateEquipmentDto } from 'src/dto/index.dto';
+import { UpsertService } from 'src/service/upsert.service';
+import { ActiveRole } from 'src/auth/active.role';
+import type { JwtRoleClaim } from 'src/auth/jwt-payload.interface';
+import { ActiveRoleGuard, JwtAuthGuard } from 'src/auth/auth.guard';
+
+/**
+ * See query.controller.ts for the guard-chain rationale. Same pattern
+ * here: JwtAuthGuard + ActiveRoleGuard resolve req.activeRole, which
+ * @ActiveRole() injects into each handler. Permission checks
+ * (PermissionService.require) and scope-restricted lookups
+ * (ScopeService.xxxWhere) remain in UpsertService.
+ */
+@UseGuards(JwtAuthGuard, ActiveRoleGuard)
+@Controller('api')
+export class UpsertController {
+  constructor(private readonly service: UpsertService) {}
+
+  // Update Work Order Status
+  @Put('work-orders/:id/status')
+  async updateWorkOrderStatus(
+    @ActiveRole() activeRole: JwtRoleClaim,
+    @Param('id') workOrderId: string,
+    @Body() body: { status: string; payload?: any },
+  ) {
+    return this.service.updateWorkOrderStatus(activeRole, workOrderId, body);
+  }
+
+  @Post('/equipment/add')
+  addEquipment(
+    @ActiveRole() activeRole: JwtRoleClaim,
+    @Body() data: CreateEquipmentDto,
+  ) {
+    return this.service.addEquipment(activeRole, data);
+  }
+
+  @Put('/equipment/update/:id')
+  updateEquipment(
+    @Param('id') id: string,
+    @ActiveRole() activeRole: JwtRoleClaim,
+    @Body() data: UpdateEquipmentDto,
+  ) {
+    return this.service.updateEquipment(activeRole, id, data);
+  }
+
+  // Assign Equipment
+  @Post('equipment/:id/assign')
+  assignEquipment(
+    @Param('id') equipmentId: string,
+    @ActiveRole() activeRole: JwtRoleClaim,
+    @Body() body: { toInstitutionId: string; toEntity: 'RDHS' | 'Institution'; quantity: number },
+  ) {
+    return this.service.assignEquipment(
+      activeRole,
+      equipmentId,
+      body.toInstitutionId,
+      body.toEntity,
+      body.quantity,
+    );
+  }
+}
+
+
+
+/*import { Body, Controller, Headers, Param, Post, Put } from '@nestjs/common';
 import { CreateEquipmentDto, UpdateEquipmentDto } from 'src/dto/index.dto';
 import { UpsertService } from 'src/service/upsert.service';
 
@@ -164,4 +229,4 @@ export class UpsertController {
       
             */
 
-}
+/*}*/
