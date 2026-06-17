@@ -15,7 +15,18 @@ import { ActiveRoleGuard, JwtAuthGuard } from 'src/auth/auth.guard';
 @UseGuards(JwtAuthGuard, ActiveRoleGuard)
 @Controller('api')
 export class UpsertController {
-  constructor(private readonly service: UpsertService) {}
+  constructor(private readonly service: UpsertService) { }
+
+  // Submit Repair Request
+  @Post('repair-requests')
+  async submitRepairRequest(
+    @ActiveRole() activeRole: JwtRoleClaim,
+    @Body() body: any) {
+     console.log('submitRepairRequest called with body:', body); 
+    const { equipmentId, componentId, faultDescription, priority, submittedByUserId } = body;
+    return this.service.submitRepairRequest(activeRole, equipmentId,
+      componentId, faultDescription, priority, submittedByUserId /* submittedByUserId */);
+  }
 
   // Update Work Order Status
   @Put('work-orders/:id/status')
@@ -24,6 +35,7 @@ export class UpsertController {
     @Param('id') workOrderId: string,
     @Body() body: { status: string; payload?: any },
   ) {
+    console.log('updateWorkOrderStatus called with workOrderId:', workOrderId, 'and body:', body);
     return this.service.updateWorkOrderStatus(activeRole, workOrderId, body);
   }
 

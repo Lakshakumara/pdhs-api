@@ -8,6 +8,12 @@ import { JwtAuthGuard } from '../auth/auth.guard';
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
+   // Users
+  @Get()
+  async getUsers() {
+    return this.usersService.getUsers();
+  }
+  
   @UseGuards(JwtAuthGuard)
   @Get('me')
   async getCurrentUser(@Req() req: any): Promise<any> {

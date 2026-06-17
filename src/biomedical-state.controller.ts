@@ -9,65 +9,7 @@ function generateId(prefix: string): string {
 export class BiomedicalStateController {
   constructor(private prisma: PrismaService) { }
 
-  // Districts
-  @Get('districts')
-  async getDistricts() {
-    return this.prisma.district.findMany();
-  }
-
-  // Institutions
-  @Get('institutions')
-  async getInstitutions() {
-    return this.prisma.institution.findMany({
-      include: { district: true },
-    });
-  }
-
-  // Users
-  @Get('users')
-  async getUsers() {
-    return this.prisma.user.findMany({
-      include: { roles: true, institution: true },
-    });
-  }
-
-  // Equipment
-  @Get('equipment')
-  async getEquipment() {
-    return this.prisma.equipment.findMany({
-      include: {
-        servicePlan: true,
-        components: true,
-        assignedInstitution: true,
-      },
-    });
-  }
-
-  // Repair Requests
-  @Get('repair-requests')
-  async getRepairRequests() {
-    return this.prisma.repairRequest.findMany({
-      include: {
-        equipment: true,
-        submittedByUser: true,
-        institution: true,
-      },
-    });
-  }
-
-  // Work Orders
-  @Get('work-orders')
-  async getWorkOrders() {
-    return this.prisma.workOrder.findMany({
-      include: {
-        repairRequest: {
-          include: { equipment: true, submittedByUser: true, institution: true },
-        },
-        assignedTechnician: true,
-        institution: true,
-      },
-    });
-  }
+  
 
   // Suppliers
   @Get('suppliers')
@@ -124,217 +66,6 @@ export class BiomedicalStateController {
     });
   }
 
-  // === Creation / Update endpoints ===
-
-  // Add Equipment
-  @Post('equipment')
-  async addEquipment(@Body() data: any) {
-    const id = generateId('eq');
-    const { components, servicePlan, ...equipmentData } = data;
-    console.log("add eqipment ", equipmentData)
-    console.log("add eqipment ", components)
-    return this.prisma.equipment.create({
-      data: {
-        id,
-        ...equipmentData,
-        components: {
-          create: components
-        },
-        servicePlan: servicePlan ? {
-          create: servicePlan
-        } : undefined
-      }
-    });
-  }
-
-  // Update Equipment
-  @Put('equipment/:id')
-  async updateEquipment(@Param('id') id: string, @Body() data: any) {
-    const { components, servicePlan, ...equipmentData } = data;
-    return this.prisma.equipment.update({
-      where: { id },
-      data: {
-        ...equipmentData,
-        servicePlan: servicePlan ? {
-          upsert: {
-            create: servicePlan,
-            update: servicePlan
-          }
-        } : undefined
-      }
-    });
-  }
-
-  // Assign Equipment
-  @Post('equipment/:id/assign')
-  async assignEquipment(
-    @Param('id') equipmentId: string,
-    @Body() body: { toInstitutionId: string; toEntity: 'RDHS' | 'Institution'; quantity: number },
-  ) {
-    const equipment = await this.prisma.equipment.findUnique({
-      where: { id: equipmentId },
-      include: { assignedInstitution: true },
-    });
-    if (!equipment) throw new NotFoundException('Equipment not found');
-
-    const institution = await this.prisma.institution.findUnique({
-      where: { id: body.toInstitutionId },
-    });
-    if (!institution) throw new NotFoundException('Institution not found');
-
-    const fromEntity = equipment.status === 'PDHS Store' ? 'PDHS' : 'RDHS';
-    const assignmentId = generateId('asg');
-
-    const assignment = await this.prisma.assignment.create({
-      data: {
-        id: assignmentId,
-        equipmentId,
-        fromEntity,
-        toEntity: body.toEntity,
-        toEntityId: body.toInstitutionId,
-        quantity: body.quantity,
-        assignmentDate: new Date(),
-        status: 'Acknowledged',
-      },
-    });
-
-    await this.prisma.equipment.update({
-      where: { id: equipmentId },
-      data: {
-        status: 'Assigned',
-        assignedInstitutionId: body.toInstitutionId,
-      },
-    });
-
-    return assignment;
-  }
-
-  // Submit Repair Request
-  @Post('repair-requests')
-  async submitRepairRequest(@Body() body: any) {
-    const { equipmentId, componentId, faultDescription, priority } = body;
-    const equipment = await this.prisma.equipment.findUnique({
-      where: { id: equipmentId },
-    });
-    if (!equipment) throw new NotFoundException('Equipment not found');
-
-    const userId = body.submittedByUserId ?? 'usr_bh_rat';
-    const user = await this.prisma.user.findUnique({ where: { id: userId } });
-    if (!user) throw new NotFoundException('User not found');
-
-    const institutionId = equipment.assignedInstitutionId ?? 'inst_bh_rat';
-    const institution = await this.prisma.institution.findUnique({
-      where: { id: institutionId },
-    });
-    if (!institution) throw new NotFoundException('Institution not found');
-
-    let componentName: string | undefined;
-    if (componentId) {
-      const comp = await this.prisma.equipmentComponent.findFirst({
-        where: { id: componentId, equipmentId },
-      });
-      componentName = comp?.name;
-    }
-
-    const repairRequestId = generateId('REQ');
-    const repairRequest = await this.prisma.repairRequest.create({
-      data: {
-        id: repairRequestId,
-        equipmentId,
-        equipmentName: equipment.name,
-        equipmentSerialNumber: equipment.serialNumber,
-        componentId,
-        componentName,
-        faultDescription,
-        priority,
-        submittedByUserId: userId,
-        submittedByUserName: user.fullName,
-        submissionDate: new Date(),
-        institutionId,
-        institutionName: institution.name,
-      },
-    });
-
-    const workOrderId = generateId('WO');
-    const workOrder = await this.prisma.workOrder.create({
-      data: {
-        id: workOrderId,
-        repairRequestId,
-        assignedTechnicianId: null,
-        status: 'Submitted',
-        statusDate: new Date(),
-      },
-    });
-
-    return { repairRequest, workOrder };
-  }
-
-  // Update Work Order Status
-  @Put('work-orders/:id/status')
-  async updateWorkOrderStatus(
-    @Param('id') workOrderId: string,
-    @Body() body: { status: string; payload?: any },
-  ) {
-    const { status, payload = {} } = body;
-    const workOrder = await this.prisma.workOrder.findUnique({
-      where: { id: workOrderId },
-      include: { partsUsed: true },
-    });
-    if (!workOrder) throw new NotFoundException('Work order not found');
-
-    const updateData: any = {
-      status,
-      statusDate: new Date(),
-      ...payload,
-    };
-
-    if (status === 'Completed') {
-      updateData.completedDate = new Date();
-    }
-    // Note: assignedTechnicianId handling omitted for simplicity; expect in payload if needed.
-
-    const updated = await this.prisma.workOrder.update({
-      where: { id: workOrderId },
-      data: updateData,
-    });
-
-    if (status === 'Completed' && workOrder.partsUsed.length > 0) {
-      for (const part of workOrder.partsUsed) {
-        await this.prisma.inventoryItem.update({
-          where: { id: part.inventoryItemId },
-          data: {
-            currentStock: {
-              decrement: part.quantity,
-            },
-          },
-        });
-      }
-    }
-
-    return updated;
-  }
-
-  // Add Inventory Stock
-  @Post('inventory-items/:id/stock')
-  async addInventoryStock(
-    @Param('id') inventoryItemId: string,
-    @Body() body: { quantity: number },
-  ) {
-    const item = await this.prisma.inventoryItem.findUnique({
-      where: { id: inventoryItemId },
-    });
-    if (!item) throw new NotFoundException('Inventory item not found');
-
-    const updated = await this.prisma.inventoryItem.update({
-      where: { id: inventoryItemId },
-      data: {
-        currentStock: {
-          increment: body.quantity,
-        },
-      },
-    });
-    return updated;
-  }
 
   // Add Procurement Plan
   @Post('procurement-plans')
@@ -496,16 +227,295 @@ export class BiomedicalStateController {
     return this.updatePOStatus(poId, { status: 'Approved' });
   }
 
-  // Switch User (set active user)
-  @Post('users/switch')
+
+  // Add Inventory Stock
+  @Post('inventory-items/:id/stock')
+  async addInventoryStock(
+    @Param('id') inventoryItemId: string,
+    @Body() body: { quantity: number },
+  ) {
+    const item = await this.prisma.inventoryItem.findUnique({
+      where: { id: inventoryItemId },
+    });
+    if (!item) throw new NotFoundException('Inventory item not found');
+
+    const updated = await this.prisma.inventoryItem.update({
+      where: { id: inventoryItemId },
+      data: {
+        currentStock: {
+          increment: body.quantity,
+        },
+      },
+    });
+    return updated;
+  }
+
+
+  /*
+
+  // Districts
+  @Get('districts')
+  async getDistricts() {
+    return this.prisma.district.findMany();
+  }
+
+  // Institutions
+  @Get('institutions')
+  async getInstitutions() {
+    return this.prisma.institution.findMany({
+      include: { district: true },
+    });
+  }
+
+    // Equipment
+  @Get('equipment')
+  async getEquipment() {
+    return this.prisma.equipment.findMany({
+      include: {
+        servicePlan: true,
+        components: true,
+        assignedInstitution: true,
+      },
+    });
+  }
+
+  
+   // === Creation / Update endpoints ===
+
+  // Add Equipment
+  @Post('equipment')
+  async addEquipment(@Body() data: any) {
+    const id = generateId('eq');
+    const { components, servicePlan, ...equipmentData } = data;
+    console.log("add eqipment ", equipmentData)
+    console.log("add eqipment ", components)
+    return this.prisma.equipment.create({
+      data: {
+        id,
+        ...equipmentData,
+        components: {
+          create: components
+        },
+        servicePlan: servicePlan ? {
+          create: servicePlan
+        } : undefined
+      }
+    });
+  }
+
+  // Update Equipment
+  @Put('equipment/:id')
+  async updateEquipment(@Param('id') id: string, @Body() data: any) {
+    const { components, servicePlan, ...equipmentData } = data;
+    return this.prisma.equipment.update({
+      where: { id },
+      data: {
+        ...equipmentData,
+        servicePlan: servicePlan ? {
+          upsert: {
+            create: servicePlan,
+            update: servicePlan
+          }
+        } : undefined
+      }
+    });
+  }
+
+  // Assign Equipment
+  @Post('equipment/:id/assign')
+  async assignEquipment(
+    @Param('id') equipmentId: string,
+    @Body() body: { toInstitutionId: string; toEntity: 'RDHS' | 'Institution'; quantity: number },
+  ) {
+    const equipment = await this.prisma.equipment.findUnique({
+      where: { id: equipmentId },
+      include: { assignedInstitution: true },
+    });
+    if (!equipment) throw new NotFoundException('Equipment not found');
+
+    const institution = await this.prisma.institution.findUnique({
+      where: { id: body.toInstitutionId },
+    });
+    if (!institution) throw new NotFoundException('Institution not found');
+
+    const fromEntity = equipment.status === 'PDHS Store' ? 'PDHS' : 'RDHS';
+    const assignmentId = generateId('asg');
+
+    const assignment = await this.prisma.assignment.create({
+      data: {
+        id: assignmentId,
+        equipmentId,
+        fromEntity,
+        toEntity: body.toEntity,
+        toEntityId: body.toInstitutionId,
+        quantity: body.quantity,
+        assignmentDate: new Date(),
+        status: 'Acknowledged',
+      },
+    });
+
+    await this.prisma.equipment.update({
+      where: { id: equipmentId },
+      data: {
+        status: 'Assigned',
+        assignedInstitutionId: body.toInstitutionId,
+      },
+    });
+
+    return assignment;
+  }
+
+
+  // Work Orders
+  @Get('work-orders')
+  async getWorkOrders() {
+    return this.prisma.workOrder.findMany({
+      include: {
+        repairRequest: {
+          include: { equipment: true, submittedByUser: true, institution: true },
+        },
+        assignedTechnician: true,
+        institution: true,
+      },
+    });
+  }
+
+  
+  // Update Work Order Status
+  @Put('work-orders/:id/status')
+  async updateWorkOrderStatus(
+    @Param('id') workOrderId: string,
+    @Body() body: { status: string; payload?: any },
+  ) {
+    const { status, payload = {} } = body;
+    const workOrder = await this.prisma.workOrder.findUnique({
+      where: { id: workOrderId },
+      include: { partsUsed: true },
+    });
+    if (!workOrder) throw new NotFoundException('Work order not found');
+
+    const updateData: any = {
+      status,
+      statusDate: new Date(),
+      ...payload,
+    };
+
+    if (status === 'Completed') {
+      updateData.completedDate = new Date();
+    }
+    // Note: assignedTechnicianId handling omitted for simplicity; expect in payload if needed.
+
+    const updated = await this.prisma.workOrder.update({
+      where: { id: workOrderId },
+      data: updateData,
+    });
+
+    if (status === 'Completed' && workOrder.partsUsed.length > 0) {
+      for (const part of workOrder.partsUsed) {
+        await this.prisma.inventoryItem.update({
+          where: { id: part.inventoryItemId },
+          data: {
+            currentStock: {
+              decrement: part.quantity,
+            },
+          },
+        });
+      }
+    }
+
+    return updated;
+  }
+
+  
+  // Repair Requests
+  @Get('repair-requests')
+  async getRepairRequests() {
+    return this.prisma.repairRequest.findMany({
+      include: {
+        equipment: true,
+        submittedByUser: true,
+        institution: true,
+      },
+    });
+  }
+
+// Submit Repair Request
+  @Post('repair-requests')
+  async submitRepairRequest(@Body() body: any) {
+    const { equipmentId, componentId, faultDescription, priority } = body;
+    const equipment = await this.prisma.equipment.findUnique({
+      where: { id: equipmentId },
+    });
+    if (!equipment) throw new NotFoundException('Equipment not found');
+
+    const userId = body.submittedByUserId ?? 'usr_bh_rat';
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new NotFoundException('User not found');
+
+    const institutionId = equipment.assignedInstitutionId ?? 'inst_bh_rat';
+    const institution = await this.prisma.institution.findUnique({
+      where: { id: institutionId },
+    });
+    if (!institution) throw new NotFoundException('Institution not found');
+
+    let componentName: string | undefined;
+    if (componentId) {
+      const comp = await this.prisma.equipmentComponent.findFirst({
+        where: { id: componentId, equipmentId },
+      });
+      componentName = comp?.name;
+    }
+
+    const repairRequestId = generateId('REQ');
+    const repairRequest = await this.prisma.repairRequest.create({
+      data: {
+        id: repairRequestId,
+        equipmentId,
+        equipmentName: equipment.name,
+        equipmentSerialNumber: equipment.serialNumber,
+        componentId,
+        componentName,
+        faultDescription,
+        priority,
+        submittedByUserId: userId,
+        submittedByUserName: user.fullName,
+        submissionDate: new Date(),
+        institutionId,
+        institutionName: institution.name,
+      },
+    });
+
+    const workOrderId = generateId('WO');
+    const workOrder = await this.prisma.workOrder.create({
+      data: {
+        id: workOrderId,
+        repairRequestId,
+        assignedTechnicianId: null,
+        status: 'Submitted',
+        statusDate: new Date(),
+      },
+    });
+
+    return { repairRequest, workOrder };
+  }
+
+
+   // Users
+  @Get('users')
+  async getUsers() {
+    return this.prisma.user.findMany({
+      include: { roles: true, institution: true },
+    });
+  }*/
+}
+
+
+ // Switch User (set active user)
+  /*@Post('users/switch')
   async switchUser(@Body() body: { userId: string }) {
     const user = await this.prisma.user.findUnique({
       where: { id: body.userId },
     });
     if (!user) throw new NotFoundException('User not found');
     return user;
-  }
-}
-
-
-
+  }*/

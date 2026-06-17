@@ -4,8 +4,8 @@ import { ScopeService } from '../auth/scope.service';
 import { PermissionService } from 'src/auth/permission.service';
 import { Permission } from 'src/auth/permission.enum';
 import {
-  QueryEquipmentDto, QueryInstitutionDto, QueryInventoryDto,
-  QueryRepairRequestDto, QueryWorkOrdertDto
+    QueryEquipmentDto, QueryInstitutionDto, QueryInventoryDto,
+    QueryRepairRequestDto, QueryWorkOrdertDto
 } from 'src/dto/index.dto';
 import { PrismaQueryBuilder_v1 } from 'src/prismaQueryBuilder-v1';
 import { Decimal } from '@prisma/client/runtime/client';
@@ -229,10 +229,12 @@ export class QueryService {
 
         return { urgentRepairs };
     }
-
+    async findDistrict(activeRole: JwtRoleClaim) {
+        return this.prisma.district.findMany();
+    }
     async findInstitute(activeRole: JwtRoleClaim, query: QueryInstitutionDto) {
         this.permissionService.require(activeRole.role, Permission.INSTITUTE_VIEW);
-        const scopeWhere = this.scopeService.scopeWhere(activeRole);
+        const scopeWhere = this.scopeService.instituteWhere(activeRole);
         const { where, skip, take, page, size } =
             this.queryBuilder.build(
                 query,
@@ -837,76 +839,76 @@ export class QueryService {
          this.permissionService.require(activeRole.role, Permission.EQUIPMENT_VIEW);
          const scopeWhere = this.scopeService.equipmentWhere(activeRole);
          const where: Prisma.EquipmentWhereInput = { ...scopeWhere };
- 
+
          //
          // Name Search
          //
- 
+
          if (query.search?.trim()) {
              where.name = {
                  contains: query.search.trim(),
                  mode: 'insensitive'
              };
          }
- 
+
          //
          // Institution Filter
          //
- 
+
          if (query.institutionId) {
              where.assignedInstitutionId = query.institutionId;
          }
- 
+
          //
          // Assigned Institution Filter
          //
- 
+
          if (query.assignedInstitutionId) {
              where.assignedInstitutionId = query.assignedInstitutionId;
          }
- 
+
          const skip = (query.page - 1) * query.size;
- 
+
          const take = query.size;
- 
+
          const [items, total] =
              await this.prisma.$transaction([
                  this.prisma.equipment.findMany({
- 
+
                      where,
- 
+
                      skip,
- 
+
                      take,
- 
+
                      include: {
                          assignedInstitution: true
                      },
- 
+
                      orderBy: {
                          name: 'asc'
                      }
- 
+
                  }),
- 
+
                  this.prisma.equipment.count({
                      where
                  })
              ]);
- 
- 
+
+
          return {
- 
+
              items,
- 
+
              page: query.page,
- 
+
              size: query.size,
- 
+
              total,
- 
+
              totalPages: Math.ceil(total / query.size)
- 
+
          };
      }*/
 //}

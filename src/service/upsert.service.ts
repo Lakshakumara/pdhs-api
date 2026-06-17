@@ -70,7 +70,7 @@ export class UpsertService {
 
         const updateData: any = {
             status,
-            statusDate: new Date(),
+            statusDate: new Date(), 
             ...payload,
         };
 
@@ -148,7 +148,7 @@ export class UpsertService {
                     ? { connect: { id: assignedInstitutionId } }
                     : { disconnect: true },
 
-                // ⚠️ IMPORTANT: DO NOT auto delete old relations unless intended
+                // IMPORTANT: DO NOT auto delete old relations unless intended
 
                 components: components
                     ? {
@@ -230,6 +230,45 @@ export class UpsertService {
         if (!equipment) throw new NotFoundException('Equipment not found');
         if (!equipment.assignedInstitutionId) throw new NotFoundException('Equipment not Assigned to Institute');
 
+
+        const userId = submittedByUserId;
+        const user = await this.prisma.user.findUnique({ where: { id: userId } });
+        if (!user) throw new NotFoundException('User not found');
+
+        const institutionId = equipment.assignedInstitutionId;
+        const institution = await this.prisma.institution.findUnique({
+            where: { id: institutionId },
+        });
+        if (!institution) throw new NotFoundException('Institution not found');
+
+        let componentName: string | undefined;
+        if (componentId) {
+            const comp = await this.prisma.equipmentComponent.findFirst({
+                where: { id: componentId, equipmentId },
+            });
+            componentName = comp?.name;
+        }
+
+        const repairRequestId = generateId('REQ');
+        const repairRequest = await this.prisma.repairRequest.create({
+            data: {
+                id: repairRequestId,
+                equipmentId,
+                equipmentName: equipment.name,
+                equipmentSerialNumber: equipment.serialNumber,
+                componentId,
+                componentName,
+                faultDescription,
+                priority,
+                submittedByUserId: userId,
+                submittedByUserName: user.fullName,
+                submissionDate: new Date(),
+                institutionId,
+                institutionName: institution.name,
+            },
+        });
+
+/*
         const repairRequestId = generateId('REQ');
         const repairRequest = await this.prisma.repairRequest.create({
             data: {
@@ -242,7 +281,7 @@ export class UpsertService {
                 submissionDate: new Date(),
                 institutionId: equipment.assignedInstitutionId,
             },
-        });
+        });*/
 
         const workOrderId = generateId('WO');
         const workOrder = await this.prisma.workOrder.create({
@@ -250,6 +289,7 @@ export class UpsertService {
                 id: workOrderId,
                 repairRequestId,
                 assignedTechnicianId: null,
+                institutionId: equipment.assignedInstitutionId,
                 status: 'Submitted',
                 statusDate: new Date(),
             },

@@ -8,8 +8,14 @@ import { ROLE_PERMISSIONS } from 'src/auth/role-permissions';
 
 @Injectable()
 export class UsersService {
-
+  
   constructor(private readonly prisma: PrismaService) {}
+
+  async getUsers() {
+    return this.prisma.user.findMany({
+      include: { roles: true, institution: true },
+    });
+  }
 
   async getUserById(userId: string): Promise<UserDto> {
 
