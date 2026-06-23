@@ -1,11 +1,10 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from 'src/prisma.service';
-import { PermissionService } from 'src/auth/permission.service';
 import { ScopeService } from 'src/auth/scope.service';
-import { Permission } from 'src/auth/permission.enum';
 import { CreateEquipmentDto, UpdateEquipmentDto } from 'src/dto/index.dto';
 import { JwtRoleClaim } from 'src/auth/jwt-payload.interface';
 import { RepairPriority } from 'src/dto/type.enum';
+import { ID_PREFIXES, IdService } from './id.service';
 
 function generateId(prefix: string): string {
     return `${prefix}_${Date.now()}_${Math.floor(Math.random() * 10000)}`;
@@ -15,7 +14,7 @@ function generateId(prefix: string): string {
 export class UpsertService {
     constructor(
         private prisma: PrismaService,
-        private permissionService: PermissionService,
+        private idService: IdService,
         private scopeService: ScopeService) { }
 
     // ─────────────────────────────────────────────────────────────────
@@ -44,15 +43,11 @@ export class UpsertService {
     async updateWorkOrderStatus(
         activeRole: JwtRoleClaim,
         workOrderId: string,
-        body: { status: string; payload?: any },
-    ) {
+        body: { status: string; payload?: any },) {
+
         const { status, payload = {} } = body;
 
-        const requiredPermission = status === 'Completed'
-            ? Permission.WORK_ORDER_COMPLETE
-            : Permission.WORK_ORDER_ASSIGN;
-
-        this.permissionService.require(activeRole.role, requiredPermission);
+        
 
         const scopeWhere = this.scopeService.scopeWhere(activeRole);
 
@@ -101,9 +96,7 @@ export class UpsertService {
     }
 
     async addEquipment(activeRole: JwtRoleClaim, data: CreateEquipmentDto) {
-        this.permissionService.require(activeRole.role, Permission.EQUIPMENT_CREATE);
-
-        const { components, servicePlan, assignedInstitutionId, ...equipmentData } = data;
+        const { spareParts, servicePlan, assignedInstitutionId, ...equipmentData } = data;
 
         return this.prisma.equipment.create({
             data: {
@@ -117,9 +110,9 @@ export class UpsertService {
                     }
                     : undefined,
 
-                components: components?.length
+                spareParts: spareParts?.length
                     ? {
-                        create: components
+                        create: spareParts
                     }
                     : undefined,
 
@@ -133,38 +126,26 @@ export class UpsertService {
     }
 
     async updateEquipment(activeRole: JwtRoleClaim, id: string, data: UpdateEquipmentDto) {
-        this.permissionService.require(activeRole.role, Permission.EQUIPMENT_UPDATE);
-
-        const { components, servicePlan, assignedInstitutionId, ...equipmentData } = data;
+        const { spareParts, servicePlan, assignedInstitutionId, ...equipmentData } = data;
 
         return this.prisma.equipment.update({
             where: { id },
-
-            data: {
-                ...equipmentData,
-
+            data: {...equipmentData,
                 // ONLY update relation if changed
                 assignedInstitution: assignedInstitutionId
-                    ? { connect: { id: assignedInstitutionId } }
-                    : { disconnect: true },
+                    ? { connect: { id: assignedInstitutionId } }: { disconnect: true },
 
                 // IMPORTANT: DO NOT auto delete old relations unless intended
 
-                components: components
-                    ? {
-                        deleteMany: {},   // remove old components
-                        create: components
-                    }
-                    : undefined,
+                spareParts: spareParts? {
+                        deleteMany: {},   // remove old spareParts
+                        create: spareParts} : undefined,
 
-                servicePlan: servicePlan
-                    ? {
+                servicePlan: servicePlan? {
                         upsert: {
                             create: servicePlan,
                             update: servicePlan
-                        }
-                    }
-                    : undefined
+                        } } : undefined
             }
         });
     }
@@ -172,10 +153,6 @@ export class UpsertService {
 
     async assignEquipment(activeRole: JwtRoleClaim, equipmentId: string, toInstitutionId: string,
         toEntity: 'RDHS' | 'Institution', quantity: number) {
-
-        this.permissionService.require(activeRole.role, Permission.EQUIPMENT_UPDATE);
-
-
         const equipment = await this.prisma.equipment.findUnique({
             where: { id: equipmentId },
             include: { assignedInstitution: true },
@@ -218,18 +195,15 @@ export class UpsertService {
     async submitRepairRequest(
         activeRole: JwtRoleClaim,
         equipmentId: string,
-        componentId: string | undefined,
+        sparePartId: string | undefined,
         faultDescription: string,
         priority: RepairPriority, submittedByUserId: string) {
-
-        this.permissionService.require(activeRole.role, Permission.REPAIR_REQUEST_CREATE);
 
         const equipment = await this.prisma.equipment.findUnique({
             where: { id: equipmentId },
         });
         if (!equipment) throw new NotFoundException('Equipment not found');
         if (!equipment.assignedInstitutionId) throw new NotFoundException('Equipment not Assigned to Institute');
-
 
         const userId = submittedByUserId;
         const user = await this.prisma.user.findUnique({ where: { id: userId } });
@@ -241,23 +215,30 @@ export class UpsertService {
         });
         if (!institution) throw new NotFoundException('Institution not found');
 
-        let componentName: string | undefined;
-        if (componentId) {
-            const comp = await this.prisma.equipmentComponent.findFirst({
-                where: { id: componentId, equipmentId },
+        let sparePartName: string | undefined;
+        if (sparePartId) {
+            const part = await this.prisma.equipmentSpareParts.findFirst({
+                where: { id: sparePartId, equipmentId },
             });
-            componentName = comp?.name;
+            sparePartName = part?.name;
         }
 
         const repairRequestId = generateId('REQ');
+        // AFTER:
+// → 'REQ-2026-0001'
+
+const [repairId, workOrderId] = await Promise.all([
+  this.idService.generate(ID_PREFIXES.REPAIR_REQUEST),
+  this.idService.generate(ID_PREFIXES.WORK_ORDER),
+]);
         const repairRequest = await this.prisma.repairRequest.create({
             data: {
-                id: repairRequestId,
+                id: repairId,
                 equipmentId,
                 equipmentName: equipment.name,
                 equipmentSerialNumber: equipment.serialNumber,
-                componentId,
-                componentName,
+                sparePartId,
+                sparePartName,
                 faultDescription,
                 priority,
                 submittedByUserId: userId,
@@ -268,22 +249,7 @@ export class UpsertService {
             },
         });
 
-/*
-        const repairRequestId = generateId('REQ');
-        const repairRequest = await this.prisma.repairRequest.create({
-            data: {
-                id: repairRequestId,
-                equipmentId,
-                componentId,
-                faultDescription,
-                priority,
-                submittedByUserId,
-                submissionDate: new Date(),
-                institutionId: equipment.assignedInstitutionId,
-            },
-        });*/
-
-        const workOrderId = generateId('WO');
+        //const workOrderId = generateId('WO');
         const workOrder = await this.prisma.workOrder.create({
             data: {
                 id: workOrderId,

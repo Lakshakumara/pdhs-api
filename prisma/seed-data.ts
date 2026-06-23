@@ -86,7 +86,7 @@ async function main() {
   // Seed Equipment with relations
   console.log('Seeding equipment...')
   for (const equipmentData of seedData.equipment) {
-    const { servicePlan, components, ...equipment } = equipmentData
+    const { servicePlan, spareParts, ...equipment } = equipmentData
     
     // Create equipment
     const createdEquipment = await prisma.equipment.upsert({
@@ -104,13 +104,13 @@ async function main() {
       })
     }
     
-    // Create components if exist
-    if (components && components.length > 0) {
-      for (const componentData of components) {
-        await prisma.equipmentComponent.upsert({
-          where: { id: componentData.id },
-          update: { ...componentData, equipmentId: createdEquipment.id },
-          create: { ...componentData, equipmentId: createdEquipment.id },
+    // Create spareParts if exist
+    if (spareParts && spareParts.length > 0) {
+      for (const sparePartData of spareParts) {
+        await prisma.equipmentSpareParts.upsert({
+          where: { id: sparePartData.id },
+          update: { ...sparePartData, equipmentId: createdEquipment.id },
+          create: { ...sparePartData, equipmentId: createdEquipment.id },
         })
       }
     }
@@ -139,7 +139,7 @@ async function main() {
   // Seed Work Orders
   console.log('Seeding work orders...')
   for (const workOrder of seedData.workOrders) {
-    const { inspectedComponents, partsUsed, ...workOrderData } = workOrder
+    const { inspectedspareParts, partsUsed, ...workOrderData } = workOrder
     
     // Create work order
     const createdWorkOrder = await prisma.workOrder.upsert({
@@ -148,13 +148,13 @@ async function main() {
       create: workOrderData,
     })
     
-    // Create inspected components if exist
-    if (inspectedComponents && inspectedComponents.length > 0) {
-      for (const inspectedComponentData of inspectedComponents) {
-        await prisma.inspectedComponent.upsert({
-          where: { id: inspectedComponentData.id },
-          update: { ...inspectedComponentData, workOrderId: createdWorkOrder.id },
-          create: { ...inspectedComponentData, workOrderId: createdWorkOrder.id },
+    // Create inspected spareParts if exist
+    if (inspectedspareParts && inspectedspareParts.length > 0) {
+      for (const inspectedsparePartData of inspectedspareParts) {
+        await prisma.inspectedSparePart.upsert({
+          where: { id: inspectedsparePartData.id },
+          update: { ...inspectedsparePartData, workOrderId: createdWorkOrder.id },
+          create: { ...inspectedsparePartData, workOrderId: createdWorkOrder.id },
         })
       }
     }

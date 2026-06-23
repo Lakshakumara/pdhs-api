@@ -40,7 +40,7 @@ export interface JwtPayload {
 declare global {
   namespace Express {
     interface Request {
-      ruser?: JwtPayload;
+      user?: JwtPayload;
       activeRole?: JwtRoleClaim;
     }
   }

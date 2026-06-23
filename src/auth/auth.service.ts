@@ -10,7 +10,6 @@ import * as bcrypt from 'bcrypt';
 import { randomUUID } from 'crypto';
 import { PrismaService } from '../prisma.service';
 import { JwtPayload, JwtRoleClaim } from './jwt-payload.interface';
-import { ROLE_PERMISSIONS } from './role-permissions';
 import { generateOpaqueToken, hashToken } from './crypto.util';
 
 const BCRYPT_ROUNDS = 12;
@@ -40,6 +39,7 @@ export class AuthService {
       include: {
         roles: true,
         institution: { include: { district: true } },
+        permissions: { include:{ grantedBy:{ select: { id: true, fullName:true } }}},
       },
     });
 
@@ -254,7 +254,7 @@ export class AuthService {
     };
 
     return this.jwtService.sign(payload, {
-      secret: this.configService.get<string>('JWT_SECRET', 'dev-secret-change-me'),
+      secret: this.configService.get<string>('JWT_SECRET', 'soft_solution_software_@_laksha_@_1227'),
       // See auth.module.ts for why this cast is needed — JwtSignOptions
       // types expiresIn as `number | StringValue`, narrower than the
       // plain `string` ConfigService.get() returns.
@@ -313,9 +313,15 @@ export class AuthService {
         role: role.role,
         scopeType: role.scopeType,
         scopeId: role.scopeId,
-        permission: ROLE_PERMISSIONS[role.role] ?? [],
         assignedAt: role.assignedAt,
         assignedById: role.assignedById,
+      })),
+      permissions:user.permissions.map((per:any)=>({
+        permission:per.permission,
+        grantedAt:per.grantedAt,
+        note:per.note,
+        expiresAt: per.expiresAt,
+        grantedBy:per.grantedBy,
       })),
     };
   }

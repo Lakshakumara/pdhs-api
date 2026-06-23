@@ -14,7 +14,7 @@ export class EquipmentService {
   constructor(
     private prisma: PrismaService,
     private scopeService: ScopeService) { }
-
+/*
 async findById(
     id: string,
     activeRole: any
@@ -79,7 +79,7 @@ async findById(
     await this.prisma.equipment.delete({
       where: { id }
     });
-  }
+  }*/
   /*
     async addStock(
       id: string,

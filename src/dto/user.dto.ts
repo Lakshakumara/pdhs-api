@@ -16,6 +16,7 @@ export interface UserDto {
   districtName?: string | null;
 
   roles: UserRoleDto[];
+  permissions: UserPermissionRecord[];
 }
 
 export interface UserRoleDto {
@@ -23,7 +24,16 @@ export interface UserRoleDto {
   role: string;
   scopeType: string;
   scopeId: string | null;
-  permission: Permission[] | null
+  //permission: Permission[] | null
   assignedAt: Date;
   assignedById: string | null;
+}
+export interface UserPermissionRecord {
+  id: string;
+  permission: Permission;
+  grantedAt: string;
+  expiresAt: string | null;
+  note: string | null;
+  active: boolean;
+  grantedBy: { id: string; fullName: string } | null;
 }

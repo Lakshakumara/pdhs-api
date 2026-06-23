@@ -5,11 +5,9 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { JwtStrategy } from './strategies/jwt.strategy';
-// PrismaModule lives at src/prisma.module.ts (root). @Global(), so this
-// import is mostly for documentation — PrismaService is available
-// app-wide once PrismaModule is imported in AppModule.
 import { PrismaModule } from '../prisma.module';
-import { JwtAuthGuard, ActiveRoleGuard } from './auth.guard';
+import { JwtAuthGuard, ActiveRoleGuard } from '../common/guard/auth.guard';
+import { PermissionGuard } from 'src/common/guard/permission-guard';
 
 @Module({
   imports: [
@@ -19,7 +17,7 @@ import { JwtAuthGuard, ActiveRoleGuard } from './auth.guard';
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (config: ConfigService): JwtModuleOptions => ({
-        secret: config.get<string>('JWT_SECRET', 'dev-secret-change-me'),
+        secret: config.get<string>('JWT_SECRET', 'soft_solution_software_@_laksha_@_1227'),
         signOptions: {
           // @nestjs/jwt types `expiresIn` as `number | StringValue` (a
           // narrow template-literal type from the `ms` package), but
@@ -33,9 +31,9 @@ import { JwtAuthGuard, ActiveRoleGuard } from './auth.guard';
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, JwtStrategy, JwtAuthGuard, ActiveRoleGuard],
+  providers: [AuthService, JwtStrategy, JwtAuthGuard, ActiveRoleGuard, PermissionGuard],
   // Exported so other feature modules can use these guards in their own
   // @UseGuards(...) without re-declaring them as providers.
-  exports: [AuthService, JwtAuthGuard, ActiveRoleGuard],
+  exports: [AuthService, JwtAuthGuard, ActiveRoleGuard, PermissionGuard],
 })
 export class AuthModule {}

@@ -5,7 +5,7 @@ import {
   Injectable,
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
-import { JwtRoleClaim } from './jwt-payload.interface';
+import { JwtRoleClaim } from '../../auth/jwt-payload.interface';
 
 // ───────────────────────────────────────────────────────────────────────
 // 1. JwtAuthGuard

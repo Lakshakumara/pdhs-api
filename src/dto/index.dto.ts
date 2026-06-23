@@ -7,12 +7,18 @@ import {
   IsArray,
   ValidateNested,
   IsIn,
-  IsJSON,
-  isString,
+  IsEmail,
+  IsEnum,
+  Matches,
+  Max,
+  Min,
+  MinLength,
+  IsDateString,
 } from 'class-validator'
 import { Type } from 'class-transformer'
 import { TransformDate } from '../common/decorators/transform-date.decorator'
 import { BaseQueryDto } from './genericDto'
+import { RoleType, ScopeType } from '@prisma/client'
 
 // ─────────────────────────────────────────────
 // DISTRICT
@@ -89,62 +95,124 @@ export class QueryInstitutionDto extends BaseQueryDto {
 
 export class CreateUserDto {
   @IsString()
-  id!: string
+  @MinLength(3)
+  @Matches(/^[a-z0-9._-]+$/, {
+    message: 'Username may only contain lowercase letters, numbers, dots, hyphens, underscores',
+  })
+  username!: string;
 
   @IsString()
-  username!: string
+  @MinLength(2)
+  fullName!: string;
+
+  @IsOptional()
+  @IsEmail()
+  email?: string;
 
   @IsString()
-  fullName!: string
+  @MinLength(8)
+  password!: string;
 
   @IsOptional()
   @IsString()
-  email?: string | null
+  institutionId?: string;
 
-  @IsString()
-  @IsIn([
-    'SUPER_ADMIN_PDHS', 'ADMIN_PDHS', 'SUPER_ADMIN_RDHS', 'ADMIN_RDHS',
-    'SUPER_ADMIN_INSTITUTE', 'ADMIN_INSTITUTE', 'VIEWER_PDHS', 'VIEWER_RDHS',
-    'VIEWER_INSTITUTE', 'STORE_KEEPER', 'BIOMEDICAL_TECHNICIAN', 'PROCUREMENT_OFFICER',
-    'INSTITUTION_USER'
-  ])
-  role!: string
+  @IsOptional()
   @IsBoolean()
-  mustChangePassword!: boolean
+  mustChangePassword?: boolean;
 
-  @IsBoolean()
-  active!: boolean
+  // Initial role assigned on creation
+  @IsEnum(RoleType)
+  role!: RoleType;
+
+  @IsEnum(ScopeType)
+  scopeType!: ScopeType;
 
   @IsOptional()
   @IsString()
-  districtId?: string | null
-
-  @IsOptional()
-  @IsString()
-  institutionId?: string | null
+  scopeId?: string;
 }
 
 export class UpdateUserDto {
   @IsOptional()
   @IsString()
-  fullName?: string
+  @MinLength(2)
+  fullName?: string;
+
+  @IsOptional()
+  @IsEmail()
+  email?: string;
 
   @IsOptional()
   @IsString()
-  role?: string
+  institutionId?: string;
 
   @IsOptional()
   @IsBoolean()
-  active?: boolean
-
-  @IsOptional()
-  @IsString()
-  districtId?: string
-
-  @IsOptional()
-  @IsString()
-  institutionId?: string
+  mustChangePassword?: boolean;
 }
+
+export class QueryUsersDto {
+  @IsOptional()
+  @IsString()
+  search?: string;
+
+  @IsOptional()
+  @IsString()
+  institutionId?: string;
+
+  @IsOptional()
+  @IsString()
+  districtId?: string;
+
+  @IsOptional()
+  @IsString()
+  role?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  @Type(() => Boolean)
+  active?: boolean;
+
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Type(() => Number)
+  page: number = 1;
+
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(100)
+  @Type(() => Number)
+  size: number = 20;
+}
+
+export class AddRoleDto {
+  @IsEnum(RoleType)
+  role!: RoleType;
+
+  @IsEnum(ScopeType)
+  scopeType!: ScopeType;
+
+  @IsOptional()
+  @IsString()
+  scopeId?: string;
+}
+
+export class GrantPermissionDto {
+  @IsString()
+  permission!: string;         // Permission enum value
+
+  @IsOptional()
+  @IsDateString()
+  expiresAt?: string;         // ISO string — null = permanent
+
+  @IsOptional()
+  @IsString()
+  note?: string;              // Reason for grant
+}
+
 
 // ─────────────────────────────────────────────
 // SUPPLIER
@@ -330,10 +398,10 @@ export class UpdateServicePlanDto {
 }
 
 // ─────────────────────────────────────────────
-// EQUIPMENT COMPONENT
+// EQUIPMENT SparePart
 // ─────────────────────────────────────────────
 
-export class CreateEquipmentComponentDto {
+export class CreateEquipmentSparePartDto {
   @IsString()
   id!: string
 
@@ -356,7 +424,7 @@ export class CreateEquipmentComponentDto {
   quantity!: number
 
   @IsString()
-  componentType!: string
+  sparePartType!: string
 
   @IsOptional()
   @TransformDate()                   // "2025-04-15" → Date
@@ -367,7 +435,7 @@ export class CreateEquipmentComponentDto {
   equipmentId!: string
 }
 
-export class UpdateEquipmentComponentDto {
+export class UpdateEquipmentSparePartDto {
   @IsOptional()
   @IsString()
   name?: string
@@ -390,7 +458,7 @@ export class UpdateEquipmentComponentDto {
 
   @IsOptional()
   @IsString()
-  componentType?: string
+  sparePartType?: string
 
   @IsOptional()
   @TransformDate()
@@ -476,12 +544,12 @@ export class CreateEquipmentDto {
   @Type(() => CreateServicePlanDto)
   servicePlan?: CreateServicePlanDto
 
-  // Nested: create components together with equipment
+  // Nested: create spareParts together with equipment
   @IsOptional()
   @IsArray()
   @ValidateNested({ each: true })
-  @Type(() => CreateEquipmentComponentDto)
-  components?: CreateEquipmentComponentDto[]
+  @Type(() => CreateEquipmentSparePartDto)
+  spareParts?: CreateEquipmentSparePartDto[]
 }
 
 export class UpdateEquipmentDto {
@@ -567,8 +635,8 @@ export class UpdateEquipmentDto {
   @IsOptional()
   @IsArray()
   @ValidateNested({ each: true })
-  @Type(() => CreateEquipmentComponentDto)
-  components?: CreateEquipmentComponentDto[];
+  @Type(() => CreateEquipmentSparePartDto)
+  spareParts?: CreateEquipmentSparePartDto[];
 }
 
 export class QueryEquipmentDto extends BaseQueryDto {
@@ -644,11 +712,11 @@ export class CreateRepairRequestDto {
 
   @IsOptional()
   @IsString()
-  componentId?: string
+  sparePartId?: string
 
   @IsOptional()
   @IsString()
-  componentName?: string
+  sparePartName?: string
 
   @IsOptional()
   @IsString()
@@ -694,20 +762,27 @@ export class QueryRepairRequestDto extends BaseQueryDto {
   @IsOptional()
   status?: string;
 }
+export class QueryEquipmentRepairHistoryDto extends BaseQueryDto {
+  @IsOptional()
+  equipmentId?: string;
+
+  @IsOptional()
+  status?: string;
+}
 // ─────────────────────────────────────────────
-// INSPECTED COMPONENT
+// INSPECTED SparePart
 // ─────────────────────────────────────────────
 
-export class CreateInspectedComponentDto {
+export class CreateInspectedSparePartDto {
   @IsString()
   id!: string
 
   @IsString()
-  componentId!: string
+  sparePartId!: string
 
   @IsOptional()
   @IsString()
-  componentName?: string
+  sparePartName?: string
 
   @IsBoolean()
   inspected!: boolean
@@ -778,8 +853,8 @@ export class CreateWorkOrderDto {
   @IsOptional()
   @IsArray()
   @ValidateNested({ each: true })
-  @Type(() => CreateInspectedComponentDto)
-  inspectedComponents?: CreateInspectedComponentDto[]
+  @Type(() => CreateInspectedSparePartDto)
+  inspectedSpareParts?: CreateInspectedSparePartDto[]
 
   @IsOptional()
   @IsArray()
