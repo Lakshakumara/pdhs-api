@@ -109,7 +109,7 @@ export class PermissionGuard implements CanActivate {
 
     if (!satisfied) {
       throw new ForbiddenException(
-        `Missing required permission${required.length > 1 ? 's' : ''} (${mode}): ${required.join(', ')}`,
+        `Missing required permission ${declared}${ required.length > 1 ? 's' : ''} (${mode}): ${required.join(', ')}`,
       );
     }
 

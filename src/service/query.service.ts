@@ -303,21 +303,16 @@ export class QueryService {
             ['id', 'equipment.name', 'faultDescription'], ['priority', 'status']
         );
 
-
         const [items, total] = await this.prisma.$transaction([
             this.prisma.repairRequest.findMany({
                 where,
                 skip,
                 take,
                 include: {
-                    institution: true,
-                    equipment: {
-                        include: { spareParts: true },
-                    }
+                    workOrders: true,
                 },
                 orderBy: { id: 'asc' }
             }),
-
             this.prisma.repairRequest.count({ where })
         ]);
 
@@ -342,8 +337,9 @@ export class QueryService {
         console.log('repair History where ', where, query)
         const [items, total] = await this.prisma.$transaction([
             this.prisma.repairRequest.findMany({
-                where: {...where,
-                    equipmentId:query.equipmentId,
+                where: {
+                    ...where,
+                    equipmentId: query.equipmentId,
                 },
                 skip,
                 take,
@@ -370,6 +366,25 @@ export class QueryService {
             total,
             totalPages: Math.ceil(total / query.size)
         };
+    }
+
+    async findWorkOrder(activeRole: JwtRoleClaim, requestId: string) {
+        this.permissionService.require(activeRole.role, Permission.REPAIR_REQUEST_VIEW);
+        const where = this.scopeService.scopeWhere(activeRole);
+
+        return await this.prisma.$transaction([
+            this.prisma.workOrder.findMany({
+                where: {
+                    ...where,
+                    repairRequestId: requestId,
+                },
+                include: {
+                    inspectedSpareParts: true,
+                    partsUsed: true,
+                },
+            }),
+        ]);
+
     }
 
     async findWorkOrders(activeRole: JwtRoleClaim, query: QueryWorkOrdertDto) {

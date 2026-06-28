@@ -1,5 +1,7 @@
 import {
   Controller, Get,
+  Param,
+  ParseUUIDPipe,
   Query, UseGuards
 } from '@nestjs/common';
 import {
@@ -78,8 +80,7 @@ export class QueryController {
   @RequirePermission(Permission.EQUIPMENT_VIEW)
   findEquipment(
     @ActiveRole() activeRole: JwtRoleClaim,
-    @Query() query: QueryEquipmentDto,
-  ) {
+    @Query() query: QueryEquipmentDto,) {
     return this.service.findEquipment(activeRole, query);
   }
 
@@ -87,8 +88,7 @@ export class QueryController {
   @RequirePermission(Permission.REPAIR_REQUEST_VIEW)
   findRepairRequest(
     @ActiveRole() activeRole: JwtRoleClaim,
-    @Query() query: QueryRepairRequestDto,
-  ) {
+    @Query() query: QueryRepairRequestDto,) {
     return this.service.findRepairRequest(activeRole, query);
   }
 
@@ -96,18 +96,22 @@ export class QueryController {
   @RequirePermission(Permission.REPAIR_REQUEST_VIEW)
   findEquipmentRepairHistory(
     @ActiveRole() activeRole: JwtRoleClaim,
-    @Query() query: QueryEquipmentRepairHistoryDto,
-  ) {
-    console.log('controlle receive query', query)
+    @Query() query: QueryEquipmentRepairHistoryDto,) {
     return this.service.findEquipmentRepairHistory(activeRole, query);
   }
 
-  @Get('work-orders')
+  @Get('work-order/:requestId')
+  async findOne(
+    @ActiveRole() activeRole: JwtRoleClaim,
+    @Param('requestId', ParseUUIDPipe) requestId: string,) {
+    return this.service.findWorkOrder(activeRole, requestId);
+  }
+
+  @Get('work-order')
   @RequirePermission(Permission.WORK_ORDER_VIEW)
   async getWorkOrders(
     @ActiveRole() activeRole: JwtRoleClaim,
-    @Query() query: QueryWorkOrdertDto,
-  ) {
+    @Query() query: QueryWorkOrdertDto,) {
     return this.service.findWorkOrders(activeRole, query);
   }
 
@@ -128,3 +132,7 @@ export class QueryController {
     return this.service.auditLog(activeRole, query);
   }
 }
+function Parawork(target: QueryController, propertyKey: 'findOne', parameterIndex: 1): void {
+  throw new Error('Function not implemented.');
+}
+
