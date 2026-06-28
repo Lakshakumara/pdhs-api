@@ -1,5 +1,5 @@
 import { createParamDecorator, ExecutionContext } from '@nestjs/common';
-import { JwtRoleClaim } from 'src/auth/jwt-payload.interface';
+import { JwtRoleClaim } from '../../auth/jwt-payload.interface';
 
 /**
  * Extracts req.activeRole (set by ActiveRoleGuard) directly into a
@@ -8,11 +8,7 @@ import { JwtRoleClaim } from 'src/auth/jwt-payload.interface';
  * Usage:
  *   @UseGuards(JwtAuthGuard, ActiveRoleGuard)
  *   @Get()
- *   findAll(@ActiveRole() activeRole: JwtRoleClaim) {
- *     this.permissionService.require(activeRole.role, Permission.EQUIPMENT_VIEW);
- *     const where = this.scopeService.equipmentWhere(activeRole);
- *     return this.prisma.equipment.findMany({ where });
- *   }
+ *   findAll(@ActiveRole() activeRole: JwtRoleClaim) { ... }
  */
 export const ActiveRole = createParamDecorator(
   (_data: unknown, ctx: ExecutionContext): JwtRoleClaim => {

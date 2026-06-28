@@ -1,8 +1,19 @@
 import { Request } from 'express';
-import { JwtPayload, JwtRoleClaim } from 'src/auth/jwt-payload.interface';
-import { AuditContext } from 'src/service/audit.service';
+import { JwtPayload, JwtRoleClaim } from '../../auth/jwt-payload.interface';
 
+/** Captured caller context — attached to every audit log entry. */
+export interface AuditContext {
+  userId: string;
+  userName: string;
+  userRole: string;
+  ipAddress?: string;
+}
 
+/**
+ * Builds an AuditContext from an authenticated Express request.
+ * Call this in service methods after a successful write to create an
+ * audit log entry via AuditService.log().
+ */
 export function buildAuditContext(
   req: Request & { user: JwtPayload; activeRole?: JwtRoleClaim },
 ): AuditContext {

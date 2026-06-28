@@ -16,7 +16,8 @@ import {
   ForgotPasswordDto,
   ResetPasswordDto,
 } from './auth.dto';
-import { JwtAuthGuard } from '../common/guard/auth.guard';
+import { JwtAuthGuard } from '../common/guards/auth.guard';
+import type { JwtPayload } from './jwt-payload.interface';
 
 @Controller('api/auth')
 export class AuthController {
@@ -80,7 +81,7 @@ export class AuthController {
   @Post('logout-all')
   @HttpCode(HttpStatus.NO_CONTENT)
   async logoutAll(@Req() req: Request) {
-    await this.authService.logoutAllDevices(req.user!.sub);
+    await this.authService.logoutAllDevices((req.user as JwtPayload).sub);
   }
 
   // ───────────────────────────────────────────────────────────────────
@@ -94,7 +95,7 @@ export class AuthController {
   @HttpCode(HttpStatus.NO_CONTENT)
   async changePassword(@Req() req: Request, @Body() dto: ChangePasswordDto) {
     await this.authService.changePassword(
-      req.user!.sub,
+      (req.user as JwtPayload).sub,
       dto.currentPassword,
       dto.newPassword,
     );

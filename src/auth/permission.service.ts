@@ -1,6 +1,6 @@
 // permission.service.ts
 import { ForbiddenException, Injectable } from '@nestjs/common';
-import { PrismaService } from 'src/prisma.service';
+import { PrismaService } from '../prisma/prisma.service';
 import { Permission } from './permission.enum';
 
 @Injectable()

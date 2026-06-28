@@ -30,7 +30,9 @@ export interface JwtPayload {
 // ─────────────────────────────────────────────────────────────────────────
 // Express Request augmentation
 //
-// - req.user        ← populated by JwtAuthGuard (decoded JWT payload)
+// - req.user        ← populated by JwtAuthGuard (decoded JWT payload).
+//                      Passport declares this as `User | undefined`; cast
+//                      to JwtPayload where you need to access .sub etc.
 // - req.activeRole  ← populated by ActiveRoleGuard (the JwtRoleClaim
 //                      matching x-role/x-scope-* headers, or roles[0]
 //                      if absent). Consume via @ActiveRole() decorator,
@@ -40,7 +42,9 @@ export interface JwtPayload {
 declare global {
   namespace Express {
     interface Request {
-      user?: JwtPayload;
+      // NOTE: do NOT redeclare `user` here — passport already declares
+      // user?: User | undefined. Use `(req.user as JwtPayload)` at
+      // call-sites instead.
       activeRole?: JwtRoleClaim;
     }
   }

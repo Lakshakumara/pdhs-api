@@ -1,6 +1,6 @@
 import { SetMetadata } from '@nestjs/common';
 import { Request } from 'express';
-import { Permission } from 'src/auth/permission.enum';
+import { Permission } from '../../auth/permission.enum';
 
 export const PERMISSION_KEY = 'requiredPermission';
 export const PERMISSION_MODE_KEY = 'requiredPermissionMode';
@@ -12,7 +12,7 @@ export type PermissionMode = 'ANY' | 'ALL';
  * the permission(s) actually required for THIS specific request.
  *
  * Used when the required permission depends on request content — e.g.
- * "moving a work order to Verified & Closed requires WORK_ORDER_VERIFY,
+ * "moving a work order to Completed requires WORK_ORDER_COMPLETE,
  * but any other status transition only requires WORK_ORDER_ASSIGN."
  */
 export type PermissionResolver = (req: Request) => Permission | Permission[];
@@ -31,11 +31,10 @@ export type PermissionResolver = (req: Request) => Permission | Permission[];
  * All of several:
  *   @RequirePermission([Permission.EQUIPMENT_UPDATE, Permission.FINANCE_APPROVE], 'ALL')
  *
- * Resolved from request body/params (e.g. permission depends on a
- * `status` field in the request) — see PermissionResolver above:
+ * Resolved from request body/params:
  *   @RequirePermission((req) =>
- *     req.body.status === 'Verified & Closed'
- *       ? Permission.WORK_ORDER_VERIFY
+ *     req.body.status === 'Completed'
+ *       ? Permission.WORK_ORDER_COMPLETE
  *       : Permission.WORK_ORDER_ASSIGN
  *   )
  */

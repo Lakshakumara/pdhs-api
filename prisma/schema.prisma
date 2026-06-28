@@ -280,7 +280,7 @@ model RepairRequest {
   equipment             Equipment   @relation(fields: [equipmentId], references: [id])
   institution           Institution @relation(fields: [institutionId], references: [id])
   submittedByUser       User        @relation(fields: [submittedByUserId], references: [id])
-  workOrders            WorkOrder[]
+  workOrder            WorkOrder?   
 
   @@index([institutionId])
   @@index([equipmentId])
@@ -291,7 +291,7 @@ model RepairRequest {
 
 model WorkOrder {
   id                     String               @id
-  repairRequestId        String
+  repairRequestId        String               @unique
   assignedTechnicianId   String?
   assignedTechnicianName String?
   diagnosisNotes         String?
