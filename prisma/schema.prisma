@@ -123,7 +123,7 @@ model PasswordResetToken {
 model Supplier {
   id               String          @id
   name             String
-  contactName      String?
+  contactPerson    String?
   phone            String?
   email            String?
   performanceNotes String?
@@ -131,6 +131,8 @@ model Supplier {
   createdAt        DateTime        @default(now())
   updatedAt        DateTime        @updatedAt
   purchaseOrders   PurchaseOrder[]
+  supplyItem       Json?           // Array of InventoryItem { id: string, name: string }
+  remarks          String?
 
   @@map("suppliers")
 }
@@ -292,6 +294,7 @@ model RepairRequest {
 model WorkOrder {
   id                     String               @id
   repairRequestId        String               @unique
+  repairTrack            String       @default("INTERNAL")
   assignedTechnicianId   String?
   assignedTechnicianName String?
   diagnosisNotes         String?
@@ -305,6 +308,7 @@ model WorkOrder {
   assignedTechnician     User?                @relation(fields: [assignedTechnicianId], references: [id])
   institution            Institution?         @relation("InstitutionWorkOrders", fields: [institutionId], references: [id])
   repairRequest          RepairRequest        @relation(fields: [repairRequestId], references: [id])
+  vendorRepair           VendorRepair?  
 
   @@index([status])
   @@index([institutionId])
@@ -312,6 +316,79 @@ model WorkOrder {
   @@index([repairRequestId])
   @@map("work_orders")
 }
+
+
+// ─────────────────────────────────────────────────────────────────────
+// VendorRepair — one-to-one with WorkOrder, only exists when
+// repairTrack = 'VENDOR'. Captures who the vendor is, what kind of
+// job it is (warranty or paid), how the handover happens, and key
+// dates for tracking and accountability.
+// ─────────────────────────────────────────────────────────────────────
+
+model VendorRepair {
+  id              String    @id @default(cuid())
+  workOrderId     String    @unique
+
+  // Who is doing the repair
+  vendorName      String                // company name e.g. 'Prime Diagnostics Ltd'
+  vendorContact   String?               // contact person or phone
+  vendorEmail     String?
+
+  // What kind of job
+  repairBasis     String                // 'WARRANTY' | 'PAID'
+
+  // How the handover happens
+  handoverType    String                // 'FIELD_VISIT' | 'EQUIPMENT_SENT'
+
+  // EQUIPMENT_SENT fields — only relevant when handoverType = 'EQUIPMENT_SENT'
+  dispatchDate    DateTime?             // when equipment left the institution
+  dispatchedBy    String?               // userId of who authorised dispatch
+  courierRef      String?               // waybill / tracking number
+
+  // FIELD_VISIT fields — only relevant when handoverType = 'FIELD_VISIT'
+  scheduledDate   DateTime?             // when vendor is expected on site
+  visitLocation   String?               // usually the institution address/ward
+
+  // Completion tracking
+  vendorRefNumber String?               // vendor's own job/case reference
+  returnDate      DateTime?             // when equipment was returned/visit completed
+  returnNotes     String?               // brief note e.g. 'replaced X-ray tube, tested ok'
+
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  workOrder       WorkOrder @relation(fields: [workOrderId], references: [id])
+
+  @@index([repairBasis])
+  @@index([handoverType])
+  @@map("vendor_repairs")
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// Complete WorkOrder status vocabulary (both tracks)
+// ─────────────────────────────────────────────────────────────────────
+//
+// Shared (both tracks):
+//   SUBMITTED              — request received, WO created
+//   ACKNOWLEDGED           — technician accepted the job
+//   DIAGNOSED              — technician inspected, root cause identified
+//   COMPLETED              — repair done (by PDHS team OR vendor)
+//   VERIFIED_CLOSED        — supervisor signed off, immutable
+//
+// Internal track only:
+//   AWAITING_PARTS         — diagnosed, waiting for parts procurement
+//   IN_REPAIR              — active repair underway by PDHS technician
+//
+// Vendor track only:
+//   ESCALATED_TO_VENDOR    — technician decided to send to vendor,
+//                            VendorRepair record created
+//   VENDOR_IN_PROGRESS     — vendor acknowledged / visit scheduled /
+//                            equipment received by vendor
+//   VENDOR_COMPLETED       — vendor finished, equipment returned or
+//                            field visit done. Supervisor to verify.
+// ─────────────────────────────────────────────────────────────────────
+
+
 
 model InspectedSparePart {
   id             String    @id

@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ScopeService } from '../../auth/scope.service';
 import { PermissionService } from '../../auth/permission.service';
@@ -11,7 +11,12 @@ import {
   QueryEquipmentRepairHistoryDto,
   QueryWorkOrderDto,
   RepairPriority,
+  EscalateToVendorDto,
+  VendorCompletedDto,
 } from './dto/repair.dto';
+import { async } from 'rxjs';
+import { AuditContext } from 'src/common/utils/audit-context.util';
+import { AuditService } from '../audit/audit.service';
 
 @Injectable()
 export class RepairService {
@@ -21,7 +26,203 @@ export class RepairService {
     private readonly permissionService: PermissionService,
     private readonly queryBuilder: PrismaQueryBuilder,
     private readonly idService: IdService,
+    private readonly auditService: AuditService,
   ) { }
+
+
+  // ─────────────────────────────────────────────────────────────────
+  // Technician escalates to vendor — transitions from DIAGNOSED to
+  // ESCALATED_TO_VENDOR and creates the VendorRepair record.
+  //
+  // Called when the technician determines the equipment:
+  //   a) is still under warranty → repairBasis: 'WARRANTY'
+  //   b) needs specialist tools/expertise → repairBasis: 'PAID'
+  // ─────────────────────────────────────────────────────────────────
+  async escalateToVendor(
+    workOrderId: string,
+    dto: EscalateToVendorDto,
+    ctx: AuditContext,
+  ) {
+    const wo = await this.prisma.workOrder.findUnique({
+      where: { id: workOrderId },
+      include: { repairRequest: true },
+    });
+
+    if (!wo) throw new NotFoundException('Work order not found');
+
+    // Can only escalate from DIAGNOSED — must have assessed it first
+    if (wo.status !== 'DIAGNOSED') {
+      throw new BadRequestException(
+        `Can only escalate to vendor from DIAGNOSED status. Current status: ${wo.status}`,
+      );
+    }
+
+    // Validate handover-type-specific fields
+    if (dto.handoverType === 'EQUIPMENT_SENT' && !dto.dispatchDate) {
+      throw new BadRequestException('dispatchDate is required when handoverType is EQUIPMENT_SENT');
+    }
+    if (dto.handoverType === 'FIELD_VISIT' && !dto.scheduledDate) {
+      throw new BadRequestException('scheduledDate is required when handoverType is FIELD_VISIT');
+    }
+
+    const vendorRepairId = await this.idService.generate(ID_PREFIXES.VENDOR_REPAIR);
+
+    const [updatedWo] = await this.prisma.$transaction([
+      // 1. Transition WorkOrder to vendor track
+      this.prisma.workOrder.update({
+        where: { id: workOrderId },
+        data: {
+          status: 'ESCALATED_TO_VENDOR',
+          repairTrack: 'VENDOR',
+          statusDate: new Date(),
+        },
+      }),
+      // 2. Create the VendorRepair record
+      this.prisma.vendorRepair.create({
+        data: {
+          id: vendorRepairId,
+          workOrderId,
+          vendorName: dto.vendorName,
+          vendorContact: dto.vendorContact,
+          vendorEmail: dto.vendorEmail,
+          repairBasis: dto.repairBasis,
+          handoverType: dto.handoverType,
+          dispatchDate: dto.dispatchDate,
+          dispatchedBy: dto.dispatchedBy,
+          courierRef: dto.courierRef,
+          scheduledDate: dto.scheduledDate,
+          visitLocation: dto.visitLocation,
+          vendorRefNumber: dto.vendorRefNumber,
+        },
+      }),
+    ]);
+
+    await this.auditService.log(ctx, {
+      action: 'STATUS_CHANGE',
+      entityName: 'WorkOrder',
+      recordId: workOrderId,
+      description:
+        `Work order ${workOrderId} escalated to vendor "${dto.vendorName}" ` +
+        `(${dto.repairBasis}, ${dto.handoverType}) for repair request ${wo.repairRequestId}.`,
+      institutionId: wo.institutionId ?? undefined,
+      metadata: {
+        previousStatus: 'DIAGNOSED',
+        newStatus: 'ESCALATED_TO_VENDOR',
+        vendorName: dto.vendorName,
+        repairBasis: dto.repairBasis,
+        handoverType: dto.handoverType,
+      },
+    });
+
+    return updatedWo;
+  }
+
+  // ─────────────────────────────────────────────────────────────────
+  // Vendor has completed the repair — technician/admin records the
+  // return and moves to VENDOR_COMPLETED for supervisor sign-off.
+  // ─────────────────────────────────────────────────────────────────
+  async markVendorCompleted(
+    workOrderId: string,
+    dto: VendorCompletedDto,
+    ctx: AuditContext,
+  ) {
+    const wo = await this.prisma.workOrder.findUnique({
+      where: { id: workOrderId },
+      include: { vendorRepair: true },
+    });
+
+    if (!wo) throw new NotFoundException('Work order not found');
+    if (!wo.vendorRepair) throw new BadRequestException('No vendor repair record found for this work order');
+
+    if (!['ESCALATED_TO_VENDOR', 'VENDOR_IN_PROGRESS'].includes(wo.status)) {
+      throw new BadRequestException(
+        `Cannot mark vendor completed from status: ${wo.status}`,
+      );
+    }
+
+    await this.prisma.$transaction([
+      this.prisma.workOrder.update({
+        where: { id: workOrderId },
+        data: {
+          status: 'VENDOR_COMPLETED',
+          statusDate: new Date(),
+        },
+      }),
+      this.prisma.vendorRepair.update({
+        where: { workOrderId },
+        data: {
+          returnDate: dto.returnDate,
+          returnNotes: dto.returnNotes,
+        },
+      }),
+    ]);
+
+    await this.auditService.log(ctx, {
+      action: 'STATUS_CHANGE',
+      entityName: 'WorkOrder',
+      recordId: workOrderId,
+      description:
+        `Vendor repair completed for work order ${workOrderId}. ` +
+        `Equipment returned on ${dto.returnDate.toISOString().split('T')[0]}. ` +
+        (dto.returnNotes ? `Notes: ${dto.returnNotes}` : 'Awaiting supervisor verification.'),
+      institutionId: wo.institutionId ?? undefined,
+      metadata: {
+        previousStatus: wo.status,
+        newStatus: 'VENDOR_COMPLETED',
+        returnDate: dto.returnDate,
+      },
+    });
+
+    return { workOrderId, status: 'VENDOR_COMPLETED' };
+  }
+
+  // ─────────────────────────────────────────────────────────────────
+  // Supervisor verifies and closes — works for BOTH tracks.
+  // COMPLETED (internal) or VENDOR_COMPLETED (vendor) → VERIFIED_CLOSED
+  // ─────────────────────────────────────────────────────────────────
+  async verifyAndCloseWorkOrder(
+    workOrderId: string,
+    ctx: AuditContext,
+  ) {
+    const wo = await this.prisma.workOrder.findUnique({
+      where: { id: workOrderId },
+    });
+
+    if (!wo) throw new NotFoundException('Work order not found');
+
+    const verifiableStatuses = ['COMPLETED', 'VENDOR_COMPLETED'];
+    if (!verifiableStatuses.includes(wo.status)) {
+      throw new BadRequestException(
+        `Work order must be COMPLETED or VENDOR_COMPLETED before verification. Current: ${wo.status}`,
+      );
+    }
+
+    await this.prisma.workOrder.update({
+      where: { id: workOrderId },
+      data: {
+        status: 'VERIFIED_CLOSED',
+        statusDate: new Date(),
+      },
+    });
+
+    await this.auditService.log(ctx, {
+      action: 'STATUS_CHANGE',
+      entityName: 'WorkOrder',
+      recordId: workOrderId,
+      description:
+        `Work order ${workOrderId} verified and closed by supervisor. ` +
+        `Repair track: ${wo.repairTrack}.`,
+      institutionId: wo.institutionId ?? undefined,
+      metadata: {
+        previousStatus: wo.status,
+        newStatus: 'VERIFIED_CLOSED',
+        repairTrack: wo.repairTrack,
+      },
+    });
+
+    return { workOrderId, status: 'VERIFIED_CLOSED' };
+  }
+
 
   // ── SUBMIT REPAIR REQUEST ──────────────────────────────────────────
   async submitRepairRequest(
@@ -75,7 +276,7 @@ export class RepairService {
           submittedByUserId: user.id,
           submittedByUserName: user.fullName,
           submissionDate: new Date(),
-          institutionId:institution.id,
+          institutionId: institution.id,
           institutionName: institution.name,
         },
       });
@@ -98,27 +299,29 @@ export class RepairService {
   }
 
   // ── FIND REPAIR REQUESTS ───────────────────────────────────────────
-  async findRepairRequest(activeRole: JwtRoleClaim, query: QueryRepairRequestDto) {
+  async findRepairRequest(activeRole: JwtRoleClaim, query: any) {
     const scopeWhere = this.scopeService.scopeWhere(activeRole);
 
     const { where, skip, take, page, size } = this.queryBuilder.build(
       query,
       scopeWhere,
-      ['id', 'faultDescription'],
-      ['priority', 'status'],
+      ['id', 'faultDescription',],
+      ['priority', 'workOrder.status'],
     );
-
+    console.log('where', where)
     const [items, total] = await this.prisma.$transaction([
       this.prisma.repairRequest.findMany({
         where,
         skip,
         take,
-        include: { workOrder: true },
+        include: {
+          workOrder: true,
+          equipment: { include: { servicePlan: true, spareParts:true } }
+        },
         orderBy: { id: 'asc' },
       }),
       this.prisma.repairRequest.count({ where }),
     ]);
-
     return { items, page, size, total, totalPages: Math.ceil(total / size) };
   }
 
@@ -161,7 +364,7 @@ export class RepairService {
     this.permissionService.require(activeRole.role, Permission.REPAIR_REQUEST_VIEW);
     const where = this.scopeService.scopeWhere(activeRole);
 
-    return this.prisma.workOrder.findMany({
+    return this.prisma.workOrder.findFirst({
       where: { ...where, repairRequestId: requestId },
       include: { inspectedSpareParts: true, partsUsed: true },
     });
@@ -204,8 +407,11 @@ export class RepairService {
     activeRole: JwtRoleClaim,
     workOrderId: string,
     body: { status: string; payload?: any },) {
-
     const { status, payload = {} } = body;
+
+    
+console.log('update diagnosis', status, payload)
+3
     const scopeWhere = this.scopeService.scopeWhere(activeRole);
 
     const workOrder = await this.prisma.workOrder.findFirst({
@@ -216,27 +422,45 @@ export class RepairService {
     if (!workOrder) {
       throw new NotFoundException('Work order not found');
     }
+    const { mainPart, inspectedSpareParts } = payload;
 
-    const updateData: any = { status, statusDate: new Date(), ...payload };
+    const updateData: any = { status, statusDate: new Date(), ...mainPart };
     if (status === 'Completed') {
       updateData.completedDate = new Date();
     }
 
-    const updated = await this.prisma.workOrder.update({
-      where: { id: workOrderId },
-      data: updateData,
-    });
 
-    // Deduct inventory when work order is completed
-    if (status === 'Completed' && workOrder.partsUsed.length > 0) {
-      for (const part of workOrder.partsUsed) {
-        await this.prisma.inventoryItem.update({
-          where: { id: part.inventoryItemId },
-          data: { currentStock: { decrement: part.quantity } },
-        });
+    const result = await this.prisma.$transaction(async (tx) => {
+      const updated = await this.prisma.workOrder.update({
+        where: { id: workOrderId },
+        data: updateData,
+      });
+
+      if (inspectedSpareParts && inspectedSpareParts.length > 0) {
+        for (const part of inspectedSpareParts) {
+          await this.prisma.inspectedSparePart.create({
+            data: {
+              id: 'ic_${workOrderId}_',
+              sparePartId: part.sparePartId,
+              sparePartName: part.sparePartName,
+              inspected: part.inspected,
+              conditionNotes: part.conditionNotes,
+              workOrderId: part.workOrderId
+            },
+          });
+        }
       }
-    }
-
-    return updated;
+      // Deduct inventory when work order is completed
+      if (status === 'Completed' && workOrder.partsUsed.length > 0) {
+        for (const part of workOrder.partsUsed) {
+          await this.prisma.inventoryItem.update({
+            where: { id: part.inventoryItemId },
+            data: { currentStock: { decrement: part.quantity } },
+          });
+        }
+      }
+      return { updated };
+    });
+    return result;
   }
 }

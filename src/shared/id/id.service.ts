@@ -31,6 +31,8 @@ export const ID_PREFIXES = {
   PURCHASE_ORDER: 'PO',
   ASSIGNMENT: 'ASN',
   INVENTORY_ITEM: 'INV',
+  VENDOR_REPAIR: 'VR',
+  INSPECTED_SPARE_PART: 'ISP'
 } as const;
 
 export type IdPrefix = (typeof ID_PREFIXES)[keyof typeof ID_PREFIXES];

@@ -1,7 +1,7 @@
 import {
   IsString, IsOptional, IsArray, IsIn, ValidateNested, IsBoolean, IsNumber,
 } from 'class-validator';
-import { Type } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 import { TransformDate } from '../../../common/decorators/transform-date.decorator';
 import { BaseQueryDto } from '../../../shared/dto/base-query.dto';
 
@@ -75,6 +75,9 @@ export class QueryRepairRequestDto extends BaseQueryDto {
   category?: string;
 
   @IsOptional()
+  priority?: string;
+
+  @IsOptional()
   status?: string;
 }
 
@@ -101,6 +104,11 @@ export class CreateInspectedSparePartDto {
   @IsString()
   sparePartName?: string;
 
+  @Transform(({ value }) => {
+    if (value === 'true') return true
+    if (value === 'false') return false
+    return value
+  })
   @IsBoolean()
   inspected!: boolean;
 
@@ -213,4 +221,27 @@ export class QueryWorkOrderDto extends BaseQueryDto {
 
   @IsOptional()
   status?: string;
+}
+
+
+export interface EscalateToVendorDto {
+  vendorName: string;
+  vendorContact?: string;
+  vendorEmail?: string;
+  repairBasis: 'WARRANTY' | 'PAID';
+  handoverType: 'FIELD_VISIT' | 'EQUIPMENT_SENT';
+  // EQUIPMENT_SENT fields
+  dispatchDate?: Date;
+  dispatchedBy?: string;
+  courierRef?: string;
+  // FIELD_VISIT fields
+  scheduledDate?: Date;
+  visitLocation?: string;
+  // Optional vendor reference
+  vendorRefNumber?: string;
+}
+
+export interface VendorCompletedDto {
+  returnDate: Date;
+  returnNotes?: string;
 }

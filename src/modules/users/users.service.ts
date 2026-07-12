@@ -119,6 +119,7 @@ export class UsersService {
         { email: { contains: query.search, mode: 'insensitive' } },
       ];
     }
+    console.log('Query:', query);
     if (query.active !== undefined) where.active = query.active;
     if (query.institutionId) where.institutionId = query.institutionId;
     if (query.role) {

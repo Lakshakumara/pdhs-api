@@ -403,9 +403,9 @@ export const seedData = {
   // SUPPLIERS
   // ─────────────────────────────────────────────
   suppliers: [
-    { id: 'sup_prime', name: 'Prime Diagnostics Ltd', contactName: 'M. Fernando', phone: '+94 11 2345678', email: 'sales@primediag.lk', performanceNotes: 'Excellent support on MRI/CT calibrations.', rating: 5 },
-    { id: 'sup_medi', name: 'MediEquipment Pvt Ltd', contactName: 'K. Ratnayake', phone: '+94 11 7654321', email: 'service@mediequip.lk', performanceNotes: 'Prompt delivery of parts, pricing moderate.', rating: 4 },
-    { id: 'sup_supplies', name: 'Sabaragamuwa Medical Supplies', contactName: 'R. Perera', phone: '+94 45 2234123', email: 'sabsupplies@gmail.com', performanceNotes: 'Good local supplier for consumables.', rating: 3 }
+    { id: 'sup_prime', name: 'Prime Diagnostics Ltd', contactPerson: 'M. Fernando', phone: '+94 11 2345678', email: 'sales@primediag.lk', performanceNotes: 'Excellent support on MRI/CT calibrations.', rating: 5 },
+    { id: 'sup_medi', name: 'MediEquipment Pvt Ltd', contactPerson: 'K. Ratnayake', phone: '+94 11 7654321', email: 'service@mediequip.lk', performanceNotes: 'Prompt delivery of parts, pricing moderate.', rating: 4 },
+    { id: 'sup_supplies', name: 'Sabaragamuwa Medical Supplies', contactPerson: 'R. Perera', phone: '+94 45 2234123', email: 'sabsupplies@gmail.com', performanceNotes: 'Good local supplier for consumables.', rating: 3 }
   ],
 
   // ─────────────────────────────────────────────

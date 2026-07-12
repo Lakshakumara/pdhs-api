@@ -8,7 +8,7 @@ import {
   MinLength,
   IsDateString,
 } from 'class-validator';
-import { Type } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 import { RoleType, ScopeType } from '@prisma/client';
 
 export class CreateUserDto {
@@ -36,6 +36,11 @@ export class CreateUserDto {
   institutionId?: string;
 
   @IsOptional()
+   @Transform(({value}) => {
+    if(value === 'true') return true
+    if(value === 'false') return false
+    return value
+  })
   @IsBoolean()
   mustChangePassword?: boolean;
 
@@ -88,7 +93,11 @@ export class QueryUsersDto {
 
   @IsOptional()
   @IsBoolean()
-  @Type(() => Boolean)
+  @Transform(({value}) => {
+    if(value === 'true') return true
+    if(value === 'false') return false
+    return value
+  })
   active?: boolean;
 
   @IsOptional()

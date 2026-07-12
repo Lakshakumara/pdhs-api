@@ -4,6 +4,19 @@ import { ScopeService } from '../../auth/scope.service';
 import { PrismaQueryBuilder } from '../../prisma/prisma-query-builder';
 import { JwtRoleClaim } from '../../auth/jwt-payload.interface';
 import { BaseQueryDto } from '../../shared/dto/base-query.dto';
+import { AuditContext } from 'src/common/utils/audit-context.util';
+import { randomUUID } from 'crypto';
+
+export interface AuditEntry {
+  action: 'CREATE' | 'UPDATE' | 'DELETE' | 'ASSIGN' | 'STATUS_CHANGE' | string;
+  entityName: string;
+  recordId: string;
+  description: string;
+  institutionId?: string;
+  scopeType?: string;
+  scopeId?: string;
+  metadata?: Record<string, unknown>;
+}
 
 @Injectable()
 export class AuditService {
@@ -11,7 +24,7 @@ export class AuditService {
     private readonly prisma: PrismaService,
     private readonly scopeService: ScopeService,
     private readonly queryBuilder: PrismaQueryBuilder,
-  ) {}
+  ) { }
 
   async findAuditLogs(activeRole: JwtRoleClaim, query: BaseQueryDto) {
     const scopeWhere = this.scopeService.scopeWhere(activeRole);
@@ -40,5 +53,25 @@ export class AuditService {
       total,
       totalPages: Math.ceil(total / size),
     };
+  }
+
+  async log(ctx: AuditContext, entry: AuditEntry): Promise<void> {
+    await this.prisma.auditLog.create({
+      data: {
+        id: randomUUID(),
+        userId: ctx.userId,
+        userName: ctx.userName,
+        userRole: ctx.userRole,
+        ipAddress: ctx.ipAddress,
+        action: entry.action,
+        entityName: entry.entityName,
+        recordId: entry.recordId,
+        description: entry.description,
+        institutionId: entry.institutionId,
+        scopeType: entry.scopeType,
+        scopeId: entry.scopeId,
+        metadata: entry.metadata as any,
+      },
+    });
   }
 }

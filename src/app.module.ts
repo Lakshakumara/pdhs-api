@@ -9,6 +9,7 @@ import { OrganizationModule } from './modules/organization/organization.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { InventoryModule } from './modules/inventory/inventory.module';
 import { AuditModule } from './modules/audit/audit.module';
+import { InstituteModule } from './modules/institute/institute.module';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { AuditModule } from './modules/audit/audit.module';
     PrismaModule,
     AuthModule,
     UsersModule,
+    InstituteModule,
     EquipmentModule,
     RepairModule,
     OrganizationModule,

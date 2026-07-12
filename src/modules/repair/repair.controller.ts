@@ -18,8 +18,7 @@ import {
 @UseGuards(JwtAuthGuard, ActiveRoleGuard, PermissionGuard)
 @Controller('api')
 export class RepairController {
-  constructor(private readonly service: RepairService) {}
-
+  constructor(private readonly service: RepairService) { }
   // ── POST /api/repair-requests ──────────────────────────────────────
   @Post('repair-requests')
   @RequirePermission(Permission.REPAIR_REQUEST_CREATE)
@@ -43,7 +42,7 @@ export class RepairController {
   @RequirePermission(Permission.REPAIR_REQUEST_VIEW)
   findRepairRequest(
     @ActiveRole() activeRole: JwtRoleClaim,
-    @Query() query: QueryRepairRequestDto,
+    @Query() query: any,
   ) {
     return this.service.findRepairRequest(activeRole, query);
   }
@@ -63,7 +62,7 @@ export class RepairController {
   @SkipPermission()
   async findOne(
     @ActiveRole() activeRole: JwtRoleClaim,
-    @Param('requestId', ParseUUIDPipe) requestId: string,
+    @Param('requestId') requestId: string,
   ) {
     return this.service.findWorkOrder(activeRole, requestId);
   }
@@ -78,13 +77,14 @@ export class RepairController {
     return this.service.findWorkOrders(activeRole, query);
   }
 
-  // ── PUT /api/work-orders/:id/status ───────────────────────────────
-  @Put('work-orders/:id/status')
-  @RequirePermission((req) =>
-    req.body.status === 'Completed'
-      ? Permission.WORK_ORDER_COMPLETE
-      : Permission.WORK_ORDER_ASSIGN,
-  )
+
+  @Put('/work-orders/:id/status')
+  @RequirePermission((req) => {
+    const status = req.body?.status;
+    if (status === 'VERIFIED_CLOSED') return Permission.WORK_ORDER_VERIFY;
+    if (status === 'ESCALATED_TO_VENDOR') return Permission.WORK_ORDER_ESCALATE_VENDOR;
+    return Permission.WORK_ORDER_ASSIGN;    // all other transitions
+  })
   async updateWorkOrderStatus(
     @ActiveRole() activeRole: JwtRoleClaim,
     @Param('id') workOrderId: string,
@@ -92,4 +92,5 @@ export class RepairController {
   ) {
     return this.service.updateWorkOrderStatus(activeRole, workOrderId, body);
   }
+
 }

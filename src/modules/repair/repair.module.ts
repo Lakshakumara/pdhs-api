@@ -5,9 +5,10 @@ import { IdModule } from '../../shared/id/id.module';
 import { RepairController } from './repair.controller';
 import { RepairService } from './repair.service';
 import { PrismaQueryBuilder } from '../../prisma/prisma-query-builder';
+import { AuditModule } from '../audit/audit.module';
 
 @Module({
-  imports: [AuthModule, PrismaModule, IdModule],
+  imports: [AuthModule, PrismaModule, IdModule, AuditModule],
   controllers: [RepairController],
   providers: [RepairService, PrismaQueryBuilder],
   exports: [RepairService],
