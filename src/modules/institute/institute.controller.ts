@@ -14,9 +14,9 @@ import type { JwtRoleClaim } from '../../auth/jwt-payload.interface';
 export class InstituteController {
     constructor(private readonly service: InstituteService) { }
 
-    @Get('inventory-items')
+    @Get()
     @RequirePermission(Permission.INSTITUTE_VIEW)
-    getInventoryItems(
+    getInstitutions(
         @ActiveRole() activeRole: JwtRoleClaim,
         @Query() query: QueryInstituteDto,
     ) {

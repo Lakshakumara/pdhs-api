@@ -6,6 +6,7 @@ import {
   UseGuards,
   HttpCode,
   HttpStatus,
+  Get,
 } from '@nestjs/common';
 import type { Request } from 'express';
 import { AuthService } from './auth.service';
@@ -18,11 +19,23 @@ import {
 } from './auth.dto';
 import { JwtAuthGuard } from '../common/guards/auth.guard';
 import type { JwtPayload } from './jwt-payload.interface';
+  import { PERMISSION_GROUPS, PERMISSIONS } from './constants/permission.registry';
+import { Permission } from './permission.enum';
+import { SkipPermission } from 'src/common/decorators/skip-permission.decorator';
 
 @Controller('api/auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
+
+@Get('permissions/meta')
+@SkipPermission()
+getPermissionMeta() {
+  return {
+    groups: PERMISSION_GROUPS,
+    definitions: PERMISSIONS,
+  };
+}
   // ───────────────────────────────────────────────────────────────────
   // POST /api/auth/login
   // Body: { username, password }

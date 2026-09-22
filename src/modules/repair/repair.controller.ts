@@ -11,7 +11,6 @@ import type { JwtRoleClaim } from '../../auth/jwt-payload.interface';
 import { RepairService } from './repair.service';
 import {
   QueryEquipmentRepairHistoryDto,
-  QueryRepairRequestDto,
   QueryWorkOrderDto,
 } from './dto/repair.dto';
 

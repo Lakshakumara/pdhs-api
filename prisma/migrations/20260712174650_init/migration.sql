@@ -97,13 +97,15 @@ CREATE TABLE "password_reset_tokens" (
 CREATE TABLE "suppliers" (
     "id" TEXT NOT NULL,
     "name" TEXT NOT NULL,
-    "contactName" TEXT,
+    "contactPerson" TEXT,
     "phone" TEXT,
     "email" TEXT,
     "performanceNotes" TEXT,
     "rating" INTEGER,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
+    "supplyItem" JSONB,
+    "remarks" TEXT,
 
     CONSTRAINT "suppliers_pkey" PRIMARY KEY ("id")
 );
@@ -163,6 +165,7 @@ CREATE TABLE "equipment_spare_parts" (
 -- CreateTable
 CREATE TABLE "equipment" (
     "id" TEXT NOT NULL,
+    "invoiceNumber" TEXT,
     "name" TEXT NOT NULL,
     "description" TEXT,
     "category" TEXT NOT NULL,
@@ -242,6 +245,7 @@ CREATE TABLE "repair_requests" (
 CREATE TABLE "work_orders" (
     "id" TEXT NOT NULL,
     "repairRequestId" TEXT NOT NULL,
+    "repairTrack" TEXT NOT NULL DEFAULT 'INTERNAL',
     "assignedTechnicianId" TEXT,
     "assignedTechnicianName" TEXT,
     "diagnosisNotes" TEXT,
@@ -252,6 +256,29 @@ CREATE TABLE "work_orders" (
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "work_orders_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "vendor_repairs" (
+    "id" TEXT NOT NULL,
+    "workOrderId" TEXT NOT NULL,
+    "vendorName" TEXT NOT NULL,
+    "vendorContact" TEXT,
+    "vendorEmail" TEXT,
+    "repairBasis" TEXT NOT NULL,
+    "handoverType" TEXT NOT NULL,
+    "dispatchDate" TIMESTAMP(3),
+    "dispatchedBy" TEXT,
+    "courierRef" TEXT,
+    "scheduledDate" TIMESTAMP(3),
+    "visitLocation" TEXT,
+    "vendorRefNumber" TEXT,
+    "returnDate" TIMESTAMP(3),
+    "returnNotes" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "vendor_repairs_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -341,17 +368,30 @@ CREATE TABLE "grns" (
 -- CreateTable
 CREATE TABLE "audit_logs" (
     "id" TEXT NOT NULL,
-    "timestamp" TIMESTAMP(3) NOT NULL,
+    "timestamp" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "userId" TEXT NOT NULL,
     "userName" TEXT,
     "userRole" TEXT,
     "action" TEXT NOT NULL,
     "entityName" TEXT NOT NULL,
     "recordId" TEXT NOT NULL,
-    "description" TEXT,
+    "description" TEXT NOT NULL,
     "institutionId" TEXT,
+    "scopeType" TEXT,
+    "scopeId" TEXT,
+    "ipAddress" TEXT,
+    "metadata" JSONB,
 
     CONSTRAINT "audit_logs_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "id_sequences" (
+    "prefix" TEXT NOT NULL,
+    "lastSeq" INTEGER NOT NULL DEFAULT 0,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "id_sequences_pkey" PRIMARY KEY ("prefix")
 );
 
 -- CreateTable
@@ -388,10 +428,7 @@ CREATE INDEX "user_roles_scopeType_scopeId_idx" ON "user_roles"("scopeType", "sc
 CREATE UNIQUE INDEX "user_roles_userId_role_scopeId_key" ON "user_roles"("userId", "role", "scopeId");
 
 -- CreateIndex
-CREATE INDEX "user_permissions_userId_idx" ON "user_permissions"("userId");
-
--- CreateIndex
-CREATE INDEX "user_permissions_permission_idx" ON "user_permissions"("permission");
+CREATE INDEX "user_permissions_userId_permission_idx" ON "user_permissions"("userId", "permission");
 
 -- CreateIndex
 CREATE INDEX "user_permissions_expiresAt_idx" ON "user_permissions"("expiresAt");
@@ -457,6 +494,9 @@ CREATE INDEX "repair_requests_submittedByUserId_idx" ON "repair_requests"("submi
 CREATE INDEX "repair_requests_priority_idx" ON "repair_requests"("priority");
 
 -- CreateIndex
+CREATE UNIQUE INDEX "work_orders_repairRequestId_key" ON "work_orders"("repairRequestId");
+
+-- CreateIndex
 CREATE INDEX "work_orders_status_idx" ON "work_orders"("status");
 
 -- CreateIndex
@@ -467,6 +507,18 @@ CREATE INDEX "work_orders_assignedTechnicianId_idx" ON "work_orders"("assignedTe
 
 -- CreateIndex
 CREATE INDEX "work_orders_repairRequestId_idx" ON "work_orders"("repairRequestId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "vendor_repairs_workOrderId_key" ON "vendor_repairs"("workOrderId");
+
+-- CreateIndex
+CREATE INDEX "vendor_repairs_repairBasis_idx" ON "vendor_repairs"("repairBasis");
+
+-- CreateIndex
+CREATE INDEX "vendor_repairs_handoverType_idx" ON "vendor_repairs"("handoverType");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "inspected_spare_part_workOrderId_sparePartId_key" ON "inspected_spare_part"("workOrderId", "sparePartId");
 
 -- CreateIndex
 CREATE INDEX "purchase_orders_supplierId_idx" ON "purchase_orders"("supplierId");
@@ -492,6 +544,12 @@ CREATE INDEX "audit_logs_entityName_idx" ON "audit_logs"("entityName");
 -- CreateIndex
 CREATE INDEX "audit_logs_recordId_idx" ON "audit_logs"("recordId");
 
+-- CreateIndex
+CREATE INDEX "audit_logs_action_idx" ON "audit_logs"("action");
+
+-- CreateIndex
+CREATE INDEX "audit_logs_scopeType_scopeId_idx" ON "audit_logs"("scopeType", "scopeId");
+
 -- AddForeignKey
 ALTER TABLE "institutions" ADD CONSTRAINT "institutions_districtId_fkey" FOREIGN KEY ("districtId") REFERENCES "districts"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
@@ -499,16 +557,16 @@ ALTER TABLE "institutions" ADD CONSTRAINT "institutions_districtId_fkey" FOREIGN
 ALTER TABLE "users" ADD CONSTRAINT "users_institutionId_fkey" FOREIGN KEY ("institutionId") REFERENCES "institutions"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "user_roles" ADD CONSTRAINT "user_roles_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
 ALTER TABLE "user_roles" ADD CONSTRAINT "user_roles_assignedById_fkey" FOREIGN KEY ("assignedById") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "user_permissions" ADD CONSTRAINT "user_permissions_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "user_roles" ADD CONSTRAINT "user_roles_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "user_permissions" ADD CONSTRAINT "user_permissions_grantedById_fkey" FOREIGN KEY ("grantedById") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "user_permissions" ADD CONSTRAINT "user_permissions_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "refresh_tokens" ADD CONSTRAINT "refresh_tokens_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
@@ -535,19 +593,22 @@ ALTER TABLE "assignments" ADD CONSTRAINT "assignments_equipmentId_fkey" FOREIGN 
 ALTER TABLE "repair_requests" ADD CONSTRAINT "repair_requests_equipmentId_fkey" FOREIGN KEY ("equipmentId") REFERENCES "equipment"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "repair_requests" ADD CONSTRAINT "repair_requests_submittedByUserId_fkey" FOREIGN KEY ("submittedByUserId") REFERENCES "users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
-
--- AddForeignKey
 ALTER TABLE "repair_requests" ADD CONSTRAINT "repair_requests_institutionId_fkey" FOREIGN KEY ("institutionId") REFERENCES "institutions"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "work_orders" ADD CONSTRAINT "work_orders_repairRequestId_fkey" FOREIGN KEY ("repairRequestId") REFERENCES "repair_requests"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "repair_requests" ADD CONSTRAINT "repair_requests_submittedByUserId_fkey" FOREIGN KEY ("submittedByUserId") REFERENCES "users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "work_orders" ADD CONSTRAINT "work_orders_assignedTechnicianId_fkey" FOREIGN KEY ("assignedTechnicianId") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "work_orders" ADD CONSTRAINT "work_orders_institutionId_fkey" FOREIGN KEY ("institutionId") REFERENCES "institutions"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "work_orders" ADD CONSTRAINT "work_orders_repairRequestId_fkey" FOREIGN KEY ("repairRequestId") REFERENCES "repair_requests"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "vendor_repairs" ADD CONSTRAINT "vendor_repairs_workOrderId_fkey" FOREIGN KEY ("workOrderId") REFERENCES "work_orders"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "inspected_spare_part" ADD CONSTRAINT "inspected_spare_part_workOrderId_fkey" FOREIGN KEY ("workOrderId") REFERENCES "work_orders"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
@@ -568,7 +629,7 @@ ALTER TABLE "purchase_orders" ADD CONSTRAINT "purchase_orders_supplierId_fkey" F
 ALTER TABLE "purchase_order_items" ADD CONSTRAINT "purchase_order_items_purchaseOrderId_fkey" FOREIGN KEY ("purchaseOrderId") REFERENCES "purchase_orders"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "audit_logs" ADD CONSTRAINT "audit_logs_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "audit_logs" ADD CONSTRAINT "audit_logs_institutionId_fkey" FOREIGN KEY ("institutionId") REFERENCES "institutions"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "audit_logs" ADD CONSTRAINT "audit_logs_institutionId_fkey" FOREIGN KEY ("institutionId") REFERENCES "institutions"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "audit_logs" ADD CONSTRAINT "audit_logs_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;

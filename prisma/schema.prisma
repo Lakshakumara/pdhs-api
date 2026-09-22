@@ -282,8 +282,9 @@ model RepairRequest {
   equipment             Equipment   @relation(fields: [equipmentId], references: [id])
   institution           Institution @relation(fields: [institutionId], references: [id])
   submittedByUser       User        @relation(fields: [submittedByUserId], references: [id])
-  workOrder            WorkOrder?   
+  workOrder            WorkOrder?  
 
+  @@index([submissionDate])
   @@index([institutionId])
   @@index([equipmentId])
   @@index([submittedByUserId])
@@ -316,7 +317,6 @@ model WorkOrder {
   @@index([repairRequestId])
   @@map("work_orders")
 }
-
 
 // ─────────────────────────────────────────────────────────────────────
 // VendorRepair — one-to-one with WorkOrder, only exists when
@@ -389,9 +389,8 @@ model VendorRepair {
 // ─────────────────────────────────────────────────────────────────────
 
 
-
 model InspectedSparePart {
-  id             String    @id
+  id             String    @id @default(cuid())
   sparePartId    String
   sparePartName  String?
   inspected      Boolean
@@ -401,20 +400,29 @@ model InspectedSparePart {
   updatedAt      DateTime  @updatedAt
   workOrder      WorkOrder @relation(fields: [workOrderId], references: [id])
 
+  @@unique([workOrderId, sparePartId])
+  @@index([workOrderId])
   @@map("inspected_spare_part")
 }
 
+enum PartStatus {
+  BUFFERED    // Parts the tech took/allocated but hasn't finalized
+  CONSUMED    // Parts permanently built into the asset
+}
+
 model PartUsed {
-  id              String        @id
+  id              String        @id @default(cuid())
   description     String?
   quantity        Decimal       @db.Decimal(10, 2)
+  status          PartStatus    @default(BUFFERED) //  Added status flag
   inventoryItemId String
   workOrderId     String
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
   inventoryItem   InventoryItem @relation(fields: [inventoryItemId], references: [id])
   workOrder       WorkOrder     @relation(fields: [workOrderId], references: [id])
-
+ 
+  @@index([workOrderId])
   @@map("parts_used")
 }
 

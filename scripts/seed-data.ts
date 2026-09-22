@@ -181,7 +181,7 @@ export const seedData = {
     {
       id: 'usr_admin',
       username: 'admin',
-      fullName: 'YML Kumara (Admin)',
+      fullName: 'YML Kumara (super_admin)',
       email: 'admin@pdhs.health.lk',
       passwordHash: DEFAULT_PASSWORD_HASH,
       mustChangePassword: true,
@@ -290,8 +290,8 @@ export const seedData = {
   // ─────────────────────────────────────────────
   userRoles: [
     // ── PDHS Level ──
-    { id: 'ur_001', userId: 'usr_super_admin', role: 'SUPER_ADMIN_PDHS', scopeType: 'PDHS', scopeId: null, assignedById: null },
-    { id: 'ur_002', userId: 'usr_admin', role: 'ADMIN_PDHS', scopeType: 'PDHS', scopeId: null, assignedById: 'usr_super_admin' },
+    { id: 'ur_001', userId: 'usr_super_admin', role: 'SUPER_ADMIN_PDHS', scopeType: 'PDHS', scopeId: null, assignedById: 'usr_admin' },
+    { id: 'ur_002', userId: 'usr_admin', role: 'SUPER_ADMIN_PDHS', scopeType: 'PDHS', scopeId: null, assignedById: null },
     { id: 'ur_003', userId: 'usr_viewer', role: 'VIEWER_PDHS', scopeType: 'PDHS', scopeId: null, assignedById: 'usr_super_admin' },
     { id: 'ur_004', userId: 'usr_tech1', role: 'BIOMEDICAL_TECHNICIAN', scopeType: 'PDHS', scopeId: null, assignedById: 'usr_admin' },
     { id: 'ur_005', userId: 'usr_proc1', role: 'PROCUREMENT_OFFICER', scopeType: 'PDHS', scopeId: null, assignedById: 'usr_admin' },
@@ -310,49 +310,6 @@ export const seedData = {
   // After seeding, admins can add/remove individual permissions
   // via the User Management UI. Temporary grants use expiresAt.
   // ─────────────────────────────────────────────
-  /* userPermissions: [
-     // usr_super_admin → SUPER_ADMIN_PDHS (all permissions)
-     ...seedPermissions('usr_super_admin', 'SUPER_ADMIN_PDHS', null),
- 
-     // usr_admin → ADMIN_PDHS
-     ...seedPermissions('usr_admin', 'ADMIN_PDHS', 'usr_super_admin'),
- 
-     // usr_viewer → VIEWER_PDHS
-     ...seedPermissions('usr_viewer', 'VIEWER_PDHS', 'usr_super_admin'),
- 
-     // usr_tech1 → BIOMEDICAL_TECHNICIAN
-     ...seedPermissions('usr_tech1', 'BIOMEDICAL_TECHNICIAN', 'usr_super_admin'),
- 
-     // usr_proc1 → PROCUREMENT_OFFICER
-     ...seedPermissions('usr_proc1', 'PROCUREMENT_OFFICER', 'usr_super_admin'),
- 
-     // usr_store1 → STORE_KEEPER
-     ...seedPermissions('usr_store1', 'STORE_KEEPER', 'usr_super_admin'),
- 
-     // usr_rdhs_rat → SUPER_ADMIN_RDHS
-     ...seedPermissions('usr_rdhs_rat', 'SUPER_ADMIN_RDHS', 'usr_super_admin'),
- 
-     // usr_rdhs_keg → ADMIN_RDHS
-     ...seedPermissions('usr_rdhs_keg', 'ADMIN_RDHS', 'usr_super_admin'),
- 
-     // usr_bh_rat → INSTITUTION_USER
-     ...seedPermissions('usr_bh_rat', 'INSTITUTION_USER', 'usr_super_admin'),
- 
-     // usr_dh_bal → INSTITUTION_USER
-     ...seedPermissions('usr_dh_bal', 'INSTITUTION_USER', 'usr_super_admin'),
- 
-     // ── Example: temporary permission grant ──────────────────────────
-     // usr_dh_bal was granted INVENTORY_CREATE temporarily for a data
-     // entry task (not in their INSTITUTION_USER defaults). Expires 2026-07-01.
-     {
-       id:          'up_usr_dh_bal_INVENTORY_CREATE_temp',
-       userId:      'usr_dh_bal',
-       permission:  'INVENTORY_CREATE',
-       grantedById: 'usr_rdhs_rat',
-       expiresAt:   new Date('2026-07-01T23:59:59Z'),
-       note:        'Temporary access for Q2 inventory data entry batch'
-     }
-   ],*/
 
   userPermissions: [
     // usr_super_admin → SUPER_ADMIN_PDHS (all permissions, no granter)
@@ -587,7 +544,7 @@ export const seedData = {
       assignedTechnicianId: 'usr_tech1',
       assignedTechnicianName: 'Nuwan Perera (Technician)',
       diagnosisNotes: 'Diagnostic check indicates internal paddle contacts are worn. The cables have continuity but discharge resistance is too high. Replaced standard wiring assembly.',
-      status: 'In Repair',
+      status: 'IN_REPAIR',
       statusDate: new Date('2026-05-25T08:00:00Z'),
       institutionId: 'inst_bh_rat',
       inspectedspareParts: [
@@ -602,7 +559,7 @@ export const seedData = {
       repairRequestId: 'REQ-2026-002',
       assignedTechnicianId: 'usr_tech1',
       assignedTechnicianName: 'Nuwan Perera (Technician)',
-      status: 'Submitted',
+      status: 'SUBMITTED',
       statusDate: new Date('2026-05-25T14:15:00Z'),
       institutionId: 'inst_dh_bal',
       inspectedspareParts: [],

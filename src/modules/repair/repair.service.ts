@@ -7,14 +7,12 @@ import { PrismaQueryBuilder } from '../../prisma/prisma-query-builder';
 import { JwtRoleClaim } from '../../auth/jwt-payload.interface';
 import { IdService, ID_PREFIXES } from '../../shared/id/id.service';
 import {
-  QueryRepairRequestDto,
   QueryEquipmentRepairHistoryDto,
   QueryWorkOrderDto,
   RepairPriority,
   EscalateToVendorDto,
   VendorCompletedDto,
 } from './dto/repair.dto';
-import { async } from 'rxjs';
 import { AuditContext } from 'src/common/utils/audit-context.util';
 import { AuditService } from '../audit/audit.service';
 
@@ -316,7 +314,7 @@ export class RepairService {
         take,
         include: {
           workOrder: true,
-          equipment: { include: { servicePlan: true, spareParts:true } }
+          equipment: { include: { servicePlan: true, spareParts: true } }
         },
         orderBy: { id: 'asc' },
       }),
@@ -366,7 +364,15 @@ export class RepairService {
 
     return this.prisma.workOrder.findFirst({
       where: { ...where, repairRequestId: requestId },
-      include: { inspectedSpareParts: true, partsUsed: true },
+      include:
+      {
+        inspectedSpareParts: true, partsUsed: {
+          include:
+          {
+            inventoryItem: true
+          }
+        }
+      },
     });
   }
 
@@ -406,12 +412,11 @@ export class RepairService {
   async updateWorkOrderStatus(
     activeRole: JwtRoleClaim,
     workOrderId: string,
-    body: { status: string; payload?: any },) {
+    body: { status: string; payload?: any },
+  ) {
     const { status, payload = {} } = body;
+    console.log('service received', status, payload)
 
-    
-console.log('update diagnosis', status, payload)
-3
     const scopeWhere = this.scopeService.scopeWhere(activeRole);
 
     const workOrder = await this.prisma.workOrder.findFirst({
@@ -422,38 +427,77 @@ console.log('update diagnosis', status, payload)
     if (!workOrder) {
       throw new NotFoundException('Work order not found');
     }
-    const { mainPart, inspectedSpareParts } = payload;
 
-    const updateData: any = { status, statusDate: new Date(), ...mainPart };
+    const { inspectedSpareParts = [], ...mainPart } = payload;
+
+    console.log('service mainPart, inspectedSpareParts', mainPart, inspectedSpareParts)
+
+    const { partsUsed = [], ...updateWorkordertemp } = mainPart;
+    console.log('updateWorkordertemp, partsUsed',
+      updateWorkordertemp, '\n partsUsed', partsUsed)
+
+    const updateData: any = { status, statusDate: new Date(), ...updateWorkordertemp };
     if (status === 'Completed') {
       updateData.completedDate = new Date();
     }
 
-
     const result = await this.prisma.$transaction(async (tx) => {
-      const updated = await this.prisma.workOrder.update({
+      const updated = await tx.workOrder.update({
         where: { id: workOrderId },
         data: updateData,
       });
-
+      console.log('saving', updateData)
+      // Upsert inspected spare parts
       if (inspectedSpareParts && inspectedSpareParts.length > 0) {
-        for (const part of inspectedSpareParts) {
-          await this.prisma.inspectedSparePart.create({
-            data: {
-              id: 'ic_${workOrderId}_',
-              sparePartId: part.sparePartId,
-              sparePartName: part.sparePartName,
-              inspected: part.inspected,
-              conditionNotes: part.conditionNotes,
-              workOrderId: part.workOrderId
-            },
-          });
-        }
+        await Promise.all(
+          inspectedSpareParts.map((part) =>
+            tx.inspectedSparePart.upsert({
+              where: {
+                // this must match your @@unique constraint in schema
+                workOrderId_sparePartId: {
+                  workOrderId: workOrderId,
+                  sparePartId: part.sparePartId,
+                },
+              },
+              update: {
+                inspected: part.inspected,
+                conditionNotes: part.conditionNotes,
+                sparePartName: part.sparePartName,
+              },
+              create: {
+                sparePartId: part.sparePartId,
+                sparePartName: part.sparePartName,
+                inspected: part.inspected,
+                conditionNotes: part.conditionNotes,
+                workOrderId: workOrderId,
+              },
+            })
+          )
+        );
       }
+      console.log('saving Part userd', partsUsed)
+      await tx.partUsed.deleteMany({
+        where: { workOrderId: workOrderId }
+      });
+      for (const [index, part] of partsUsed.entries()) {
+        console.log("part to be saved ", part)
+        await tx.partUsed.upsert({
+          where: { id: part.inventoryItemId },
+          update: { quantity: part.quantity, },
+          create: {
+            id: workOrderId + '_' + index,
+            description: part.description,
+            quantity: part.quantity,
+            workOrderId: workOrderId,
+            inventoryItemId: part.inventoryItemId,
+          },
+        });
+      }
+
       // Deduct inventory when work order is completed
       if (status === 'Completed' && workOrder.partsUsed.length > 0) {
         for (const part of workOrder.partsUsed) {
-          await this.prisma.inventoryItem.update({
+          await tx.inventoryItem.update({
             where: { id: part.inventoryItemId },
             data: { currentStock: { decrement: part.quantity } },
           });
@@ -461,6 +505,8 @@ console.log('update diagnosis', status, payload)
       }
       return { updated };
     });
+
     return result;
   }
+
 }
