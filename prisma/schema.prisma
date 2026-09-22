@@ -6,9 +6,544 @@ datasource db {
   provider = "postgresql"
 }
 
-// ─────────────────────────────────────────────
-// ENUMS
-// ─────────────────────────────────────────────
+model District {
+  id           String        @id
+  name         String
+  institutions Institution[]
+
+  @@map("districts")
+}
+
+model Institution {
+  id             String          @id
+  name           String
+  email          String?
+  tp             String?
+  type           String
+  active         Boolean
+  districtId     String?
+  auditLogs      AuditLog[]      @relation("InstitutionAuditLogs")
+  equipment      Equipment[]
+  district       District?       @relation(fields: [districtId], references: [id])
+  repairRequests RepairRequest[]
+  users          User[]
+  workOrders     WorkOrder[]     @relation("InstitutionWorkOrders")
+
+  @@map("institutions")
+}
+
+model User {
+  id                  String               @id
+  username            String               @unique
+  fullName            String
+  email               String?              @unique
+  passwordHash        String
+  mustChangePassword  Boolean              @default(true)
+  active              Boolean              @default(true)
+  institutionId       String?
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+  auditLogs           AuditLog[]
+  passwordResetTokens PasswordResetToken[]
+  refreshTokens       RefreshToken[]
+  repairRequests      RepairRequest[]
+  grantedPermissions  UserPermission[]     @relation("GrantedBy")
+  permissions         UserPermission[]
+  assignedRoles       UserRole[]           @relation("RoleAssignedBy")
+  roles               UserRole[]
+  institution         Institution?         @relation(fields: [institutionId], references: [id])
+  workOrders          WorkOrder[]
+
+  @@index([institutionId])
+  @@index([active])
+  @@map("users")
+}
+
+model UserRole {
+  id           String    @id
+  userId       String
+  role         RoleType
+  scopeType    ScopeType
+  scopeId      String?
+  assignedAt   DateTime  @default(now())
+  assignedById String?
+  assignedBy   User?     @relation("RoleAssignedBy", fields: [assignedById], references: [id])
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, role, scopeId])
+  @@index([userId])
+  @@index([role])
+  @@index([scopeType, scopeId])
+  @@map("user_roles")
+}
+
+model UserPermission {
+  id          String    @id
+  userId      String
+  permission  String
+  grantedById String?
+  grantedAt   DateTime  @default(now())
+  expiresAt   DateTime?
+  note        String?
+  grantedBy   User?     @relation("GrantedBy", fields: [grantedById], references: [id])
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, permission])
+  @@index([userId, permission])
+  @@index([expiresAt])
+  @@map("user_permissions")
+}
+
+model RefreshToken {
+  id        String    @id
+  token     String    @unique
+  userId    String
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+  ipAddress String?
+  userAgent String?
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("refresh_tokens")
+}
+
+model PasswordResetToken {
+  id        String    @id
+  token     String    @unique
+  userId    String
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("password_reset_tokens")
+}
+
+model Supplier {
+  id               String          @id
+  name             String
+  contactPerson    String?
+  phone            String?
+  email            String?
+  performanceNotes String?
+  rating           Int?
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+  purchaseOrders   PurchaseOrder[]
+  supplyItem       Json?           // Array of InventoryItem { id: string, name: string }
+  remarks          String?
+
+  @@map("suppliers")
+}
+
+model InventoryItem {
+  id                String     @id
+  name              String
+  category          String
+  currentStock      Decimal    @db.Decimal(10, 2)
+  minStockThreshold Decimal    @db.Decimal(10, 2)
+  unitOfMeasure     String
+  costPerUnit       Decimal    @db.Decimal(10, 2)
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+  partsUsed         PartUsed[]
+
+  @@index([name])
+  @@index([category])
+  @@map("inventory_items")
+}
+
+model ServicePlan {
+  id                 String    @id
+  agreementReference String?
+  expiryDate         DateTime? @db.Date
+  noOfFreeService    Int
+  servicePerAnnum    Int?
+  equipmentId        String    @unique
+  serviceCosts       Json?
+  labourCosts        Json?
+  transportCosts     Json?
+  otherCosts         Json?
+  totalCosts         Json?
+  sparePartsCosts    Json?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+  equipment          Equipment @relation(fields: [equipmentId], references: [id])
+
+  @@map("service_plans")
+}
+
+model EquipmentSpareParts {
+  id                   String    @id
+  name                 String
+  description          String?
+  partNumber           String?
+  serialNumber         String?
+  quantity             Decimal   @db.Decimal(10, 2)
+  sparePartType        String
+  expiryOrWarrantyDate DateTime? @db.Date
+  equipmentId          String
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+  equipment            Equipment @relation(fields: [equipmentId], references: [id])
+
+  @@map("equipment_spare_parts")
+}
+
+model Equipment {
+  id                    String                @id @default(cuid())
+  invoiceNumber         String?
+  name                  String
+  description           String?
+  category              String
+  manufacturer          String?
+  countryOfOrigin       String?
+  supplierName          String?
+  tenderNumber          String?
+  purchaseOrderNumber   String?
+  modelNumber           String?
+  serialNumber          String?
+  batchNumber           String?
+  quantityReceived      Decimal               @db.Decimal(10, 2)
+  dateOfManufacture     DateTime?             @db.Date
+  dateOfReceipt         DateTime?             @db.Date
+  warrantyPeriodMonths  Int?
+  status                String
+  assignedInstitutionId String?
+  createdAt             DateTime              @default(now())
+  updatedAt             DateTime              @updatedAt
+  assignments           Assignment[]
+  assignedInstitution   Institution?          @relation(fields: [assignedInstitutionId], references: [id])
+  disposal              EquipmentDisposal?
+  spareParts            EquipmentSpareParts[]
+  repairRequests        RepairRequest[]
+  servicePlan           ServicePlan?
+
+  @@index([status])
+  @@index([category])
+  @@index([assignedInstitutionId])
+  @@index([name])
+  @@index([serialNumber])
+  @@index([modelNumber])
+  @@map("equipment")
+}
+
+model EquipmentDisposal {
+  id                String    @id @default(cuid())
+  equipmentId       String    @unique
+  disposalDate      DateTime? @db.Date
+  disposalMethod    String?
+  reason            String
+  approvedByUserId  String
+  approvalReference String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  equipment         Equipment @relation(fields: [equipmentId], references: [id])
+
+  @@map("equipment_disposals")
+}
+
+model Assignment {
+  id             String    @id
+  equipmentId    String
+  fromEntity     String
+  toEntity       String
+  toEntityId     String
+  quantity       Decimal   @db.Decimal(10, 2)
+  assignmentDate DateTime
+  status         String
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  equipment      Equipment @relation(fields: [equipmentId], references: [id])
+
+  @@index([equipmentId])
+  @@index([toEntityId])
+  @@index([assignmentDate])
+  @@map("assignments")
+}
+
+model RepairRequest {
+  id                    String      @id
+  equipmentId           String
+  equipmentName         String?
+  equipmentSerialNumber String?
+  sparePartName         String?
+  institutionName       String?
+  submittedByUserName   String?
+  sparePartId           String?
+  faultDescription      String?
+  priority              String
+  submittedByUserId     String
+  submissionDate        DateTime
+  institutionId         String
+  createdAt             DateTime    @default(now())
+  updatedAt             DateTime    @updatedAt
+  equipment             Equipment   @relation(fields: [equipmentId], references: [id])
+  institution           Institution @relation(fields: [institutionId], references: [id])
+  submittedByUser       User        @relation(fields: [submittedByUserId], references: [id])
+  workOrder            WorkOrder?  
+
+  @@index([submissionDate])
+  @@index([institutionId])
+  @@index([equipmentId])
+  @@index([submittedByUserId])
+  @@index([priority])
+  @@map("repair_requests")
+}
+
+model WorkOrder {
+  id                     String               @id
+  repairRequestId        String               @unique
+  repairTrack            String       @default("INTERNAL")
+  assignedTechnicianId   String?
+  assignedTechnicianName String?
+  diagnosisNotes         String?
+  status                 String
+  statusDate             DateTime
+  institutionId          String?
+  createdAt              DateTime             @default(now())
+  updatedAt              DateTime             @updatedAt
+  inspectedSpareParts    InspectedSparePart[]
+  partsUsed              PartUsed[]
+  assignedTechnician     User?                @relation(fields: [assignedTechnicianId], references: [id])
+  institution            Institution?         @relation("InstitutionWorkOrders", fields: [institutionId], references: [id])
+  repairRequest          RepairRequest        @relation(fields: [repairRequestId], references: [id])
+  vendorRepair           VendorRepair?  
+
+  @@index([status])
+  @@index([institutionId])
+  @@index([assignedTechnicianId])
+  @@index([repairRequestId])
+  @@map("work_orders")
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// VendorRepair — one-to-one with WorkOrder, only exists when
+// repairTrack = 'VENDOR'. Captures who the vendor is, what kind of
+// job it is (warranty or paid), how the handover happens, and key
+// dates for tracking and accountability.
+// ─────────────────────────────────────────────────────────────────────
+
+model VendorRepair {
+  id              String    @id @default(cuid())
+  workOrderId     String    @unique
+
+  // Who is doing the repair
+  vendorName      String                // company name e.g. 'Prime Diagnostics Ltd'
+  vendorContact   String?               // contact person or phone
+  vendorEmail     String?
+
+  // What kind of job
+  repairBasis     String                // 'WARRANTY' | 'PAID'
+
+  // How the handover happens
+  handoverType    String                // 'FIELD_VISIT' | 'EQUIPMENT_SENT'
+
+  // EQUIPMENT_SENT fields — only relevant when handoverType = 'EQUIPMENT_SENT'
+  dispatchDate    DateTime?             // when equipment left the institution
+  dispatchedBy    String?               // userId of who authorised dispatch
+  courierRef      String?               // waybill / tracking number
+
+  // FIELD_VISIT fields — only relevant when handoverType = 'FIELD_VISIT'
+  scheduledDate   DateTime?             // when vendor is expected on site
+  visitLocation   String?               // usually the institution address/ward
+
+  // Completion tracking
+  vendorRefNumber String?               // vendor's own job/case reference
+  returnDate      DateTime?             // when equipment was returned/visit completed
+  returnNotes     String?               // brief note e.g. 'replaced X-ray tube, tested ok'
+
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  workOrder       WorkOrder @relation(fields: [workOrderId], references: [id])
+
+  @@index([repairBasis])
+  @@index([handoverType])
+  @@map("vendor_repairs")
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// Complete WorkOrder status vocabulary (both tracks)
+// ─────────────────────────────────────────────────────────────────────
+//
+// Shared (both tracks):
+//   SUBMITTED              — request received, WO created
+//   ACKNOWLEDGED           — technician accepted the job
+//   DIAGNOSED              — technician inspected, root cause identified
+//   COMPLETED              — repair done (by PDHS team OR vendor)
+//   VERIFIED_CLOSED        — supervisor signed off, immutable
+//
+// Internal track only:
+//   AWAITING_PARTS         — diagnosed, waiting for parts procurement
+//   IN_REPAIR              — active repair underway by PDHS technician
+//
+// Vendor track only:
+//   ESCALATED_TO_VENDOR    — technician decided to send to vendor,
+//                            VendorRepair record created
+//   VENDOR_IN_PROGRESS     — vendor acknowledged / visit scheduled /
+//                            equipment received by vendor
+//   VENDOR_COMPLETED       — vendor finished, equipment returned or
+//                            field visit done. Supervisor to verify.
+// ─────────────────────────────────────────────────────────────────────
+
+
+model InspectedSparePart {
+  id             String    @id @default(cuid())
+  sparePartId    String
+  sparePartName  String?
+  inspected      Boolean
+  conditionNotes String?
+  workOrderId    String
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  workOrder      WorkOrder @relation(fields: [workOrderId], references: [id])
+
+  @@unique([workOrderId, sparePartId])
+  @@index([workOrderId])
+  @@map("inspected_spare_part")
+}
+
+enum PartStatus {
+  BUFFERED    // Parts the tech took/allocated but hasn't finalized
+  CONSUMED    // Parts permanently built into the asset
+}
+
+model PartUsed {
+  id              String        @id @default(cuid())
+  description     String?
+  quantity        Decimal       @db.Decimal(10, 2)
+  status          PartStatus    @default(BUFFERED) //  Added status flag
+  inventoryItemId String
+  workOrderId     String
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  inventoryItem   InventoryItem @relation(fields: [inventoryItemId], references: [id])
+  workOrder       WorkOrder     @relation(fields: [workOrderId], references: [id])
+ 
+  @@index([workOrderId])
+  @@map("parts_used")
+}
+
+model ProcurementPlan {
+  id                String          @id
+  itemDescription   String
+  estimatedQuantity Decimal         @db.Decimal(10, 2)
+  estimatedCost     Decimal         @db.Decimal(10, 2)
+  procurementMethod String
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+  purchaseOrders    PurchaseOrder[]
+
+  @@map("procurement_plans")
+}
+
+model PurchaseOrder {
+  id             String              @id
+  planId         String
+  supplierId     String
+  supplierName   String?
+  poNumber       String
+  orderDate      DateTime
+  approvalStatus String
+  totalCost      Decimal             @db.Decimal(10, 2)
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+  items          PurchaseOrderItem[]
+  plan           ProcurementPlan     @relation(fields: [planId], references: [id])
+  supplier       Supplier            @relation(fields: [supplierId], references: [id])
+
+  @@index([supplierId])
+  @@index([approvalStatus])
+  @@index([orderDate])
+  @@map("purchase_orders")
+}
+
+model PurchaseOrderItem {
+  id              String        @id
+  description     String
+  quantity        Decimal       @db.Decimal(10, 2)
+  unitCost        Decimal       @db.Decimal(10, 2)
+  category        String
+  purchaseOrderId String
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  purchaseOrder   PurchaseOrder @relation(fields: [purchaseOrderId], references: [id])
+
+  @@map("purchase_order_items")
+}
+
+model Grn {
+  id              String   @id
+  purchaseOrderId String
+  poNumber        String
+  grnNumber       String
+  receivedDate    DateTime
+  status          String
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("grns")
+}
+
+model AuditLog {
+  id            String       @id @default(cuid())
+  timestamp     DateTime     @default(now())   // server-stamped, never client-supplied
+  userId        String
+  userName      String?
+  userRole      String?
+  action        String                          // 'CREATE' | 'UPDATE' | 'DELETE' | 'ASSIGN' | 'STATUS_CHANGE' | ...
+  entityName    String                          // 'Equipment' | 'WorkOrder' | 'RepairRequest' | ...
+  recordId      String
+  description   String                          // required — no blank/meaningless audit rows
+  institutionId String?
+  scopeType     String?                         // 'PDHS' | 'RDHS' | 'INSTITUTE', mirrors ScopeType
+  scopeId       String?                         // institution/district id the action was scoped to
+  ipAddress     String?
+  metadata      Json?                           // small structured context, e.g. { "previousStatus": "Submitted" }
+
+  institution   Institution? @relation("InstitutionAuditLogs", fields: [institutionId], references: [id])
+  user          User         @relation(fields: [userId], references: [id])
+
+  @@index([timestamp])
+  @@index([userId])
+  @@index([institutionId])
+  @@index([entityName])
+  @@index([recordId])
+  @@index([action])
+  @@index([scopeType, scopeId])
+  @@map("audit_logs")
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// Add this model to schema.prisma
+// ─────────────────────────────────────────────────────────────────────
+
+model IdSequence {
+  prefix    String   @id                // 'REQ' | 'WO' | 'EQ' | 'PO' | 'ASN' | 'INV'
+  // NOTE: composite key approach below is cleaner for per-year reset.
+  // Because Prisma doesn't support composite @id easily on upsert,
+  // we use a compound string key instead: "REQ-2026"
+  // See IdService for how this is used.
+  lastSeq   Int      @default(0)
+  updatedAt DateTime @updatedAt
+
+  @@map("id_sequences")
+}
+
+// The actual PK stored in "id_sequences" will be a compound string like:
+//   "REQ-2026", "WO-2026", "EQ-2026", etc.
+// So `prefix` in the model is really `prefix-year` — rename in your
+// migration if you prefer a more explicit column name (e.g. `bucketKey`).
+
+model SeedSnapshot {
+  name       String   @id
+  payload    Json
+  updated_at DateTime @default(now()) @db.Timestamptz(6)
+
+  @@map("seed_snapshot")
+}
 
 enum RoleType {
   SUPER_ADMIN_PDHS
@@ -30,481 +565,4 @@ enum ScopeType {
   PDHS
   RDHS
   INSTITUTE
-}
-
-// ─────────────────────────────────────────────
-// HIERARCHY
-// ─────────────────────────────────────────────
-
-model District {
-  id           String        @id
-  name         String
-  institutions Institution[]
-
-  @@map("districts")
-}
-
-model Institution {
-  id             String          @id
-  name           String
-  email          String?
-  type           String
-  active         Boolean
-  districtId     String?
-  district       District?       @relation(fields: [districtId], references: [id])
-  users          User[]
-  equipment      Equipment[]
-  repairRequests RepairRequest[]
-  workOrders     WorkOrder[]     @relation("InstitutionWorkOrders")
-  auditLogs      AuditLog[]      @relation("InstitutionAuditLogs")
-
-  @@map("institutions")
-}
-
-// ─────────────────────────────────────────────
-// USER
-// ─────────────────────────────────────────────
-
-model User {
-  id                 String               @id
-  username           String               @unique
-  fullName           String
-  email              String?              @unique
-  passwordHash       String
-  mustChangePassword Boolean              @default(true)
-  active             Boolean              @default(true)
-  institutionId      String?
-  institution        Institution?         @relation(fields: [institutionId], references: [id])
-  createdAt          DateTime             @default(now())
-  updatedAt          DateTime             @updatedAt
-
-  // Auth
-  roles              UserRole[]
-  refreshTokens      RefreshToken[]
-  passwordResetTokens PasswordResetToken[]
-
-  // App relations
-  repairRequests     RepairRequest[]
-  workOrders         WorkOrder[]
-  auditLogs          AuditLog[]
-  assignedRoles      UserRole[]           @relation("RoleAssignedBy")
-
-  @@map("users")
-  @@index([institutionId])
-  @@index([active])
-}
-
-// ─────────────────────────────────────────────
-// ROLES  (many-to-many User <-> Role with scope)
-// ─────────────────────────────────────────────
-//
-// scopeType + scopeId determines what the role applies to:
-//
-//   PDHS  scope  → scopeId = null        (applies to whole system)
-//   RDHS  scope  → scopeId = districtId  (applies to that district)
-//   INSTITUTE     → scopeId = institutionId (applies to that institution)
-//
-// Examples:
-//   SUPER_ADMIN_PDHS  / PDHS      / null          → full system
-//   ADMIN_RDHS        / RDHS      / dist_rat       → Rathnapura RDHS only
-//   ADMIN_INSTITUTE   / INSTITUTE / inst_bh_rat    → Rathnapura BH only
-//   BIOMEDICAL_TECHNICIAN / PDHS  / null           → PDHS-level technician
-// ─────────────────────────────────────────────
-
-model UserRole {
-  id           String    @id
-  userId       String
-  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  role         RoleType
-  scopeType    ScopeType
-  scopeId      String?   // districtId OR institutionId OR null — plain string, no FK
-  assignedAt   DateTime  @default(now())
-  assignedById String?
-  assignedBy   User?     @relation("RoleAssignedBy", fields: [assignedById], references: [id])
-
-  @@unique([userId, role, scopeId])
-  @@map("user_roles")
-  @@index([userId])
-  @@index([role])
-  @@index([scopeType, scopeId])
-}
-
-// ─────────────────────────────────────────────
-// AUTH TOKENS
-// ─────────────────────────────────────────────
-
-model RefreshToken {
-  id        String    @id
-  token     String    @unique
-  userId    String
-  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  expiresAt DateTime
-  revokedAt DateTime?
-  createdAt DateTime  @default(now())
-  ipAddress String?
-  userAgent String?
-
-  @@map("refresh_tokens")
-}
-
-model PasswordResetToken {
-  id        String    @id
-  token     String    @unique
-  userId    String
-  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  expiresAt DateTime
-  usedAt    DateTime?
-  createdAt DateTime  @default(now())
-
-  @@map("password_reset_tokens")
-}
-
-// ─────────────────────────────────────────────
-// SUPPLIER
-// ─────────────────────────────────────────────
-
-model Supplier {
-  id               String          @id
-  name             String
-  contactName      String?
-  phone            String?
-  email            String?
-  performanceNotes String?
-  rating           Int?
-  purchaseOrders   PurchaseOrder[]
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@map("suppliers")
-}
-
-// ─────────────────────────────────────────────
-// INVENTORY
-// ─────────────────────────────────────────────
-
-model InventoryItem {
-  id                String     @id
-  name              String
-  category          String
-  currentStock      Decimal    @db.Decimal(10, 2)
-  minStockThreshold Decimal    @db.Decimal(10, 2)
-  unitOfMeasure     String
-  costPerUnit       Decimal    @db.Decimal(10, 2)
-  partsUsed         PartUsed[]
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@map("inventory_items")
-  @@index([name])
-  @@index([category])
-}
-
-// ─────────────────────────────────────────────
-// EQUIPMENT
-// ─────────────────────────────────────────────
-
-model ServicePlan {
-  id                 String    @id
-  agreementReference String?
-  expiryDate         DateTime? @db.Date
-  noOfFreeService    Int
-  servicePerAnnum    Int?
-  equipmentId        String    @unique
-  equipment          Equipment @relation(fields: [equipmentId], references: [id])
-
-  // Cost details per year — stored as JSON
-  // e.g. { year1: 50000, year2: 55000, year3: 60000, year4: 65000, year5: 70000 }
-  serviceCosts       Json?
-  labourCosts        Json?
-  transportCosts     Json?
-  otherCosts         Json?
-  totalCosts         Json?
-
-  // Spare parts costs as array of JSON objects
-  // e.g. [{ name: 'Battery', year1: 5000, year2: 5500, ... }]
-  sparePartsCosts    Json?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@map("service_plans")
-}
-
-model EquipmentComponent {
-  id                   String    @id
-  name                 String
-  description          String?
-  partNumber           String?
-  serialNumber         String?
-  quantity             Decimal   @db.Decimal(10, 2)
-  componentType        String
-  expiryOrWarrantyDate DateTime? @db.Date
-  equipmentId          String
-  equipment            Equipment @relation(fields: [equipmentId], references: [id])
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@map("equipment_components")
-}
-
-model Equipment {
-  id                    String @id @default(cuid())
-  name                  String
-  description           String?
-  category              String
-  manufacturer          String?
-  countryOfOrigin       String?
-  supplierName          String?
-  tenderNumber          String?
-  purchaseOrderNumber   String?
-  modelNumber           String?
-  serialNumber          String?
-  batchNumber           String?
-  quantityReceived      Decimal              @db.Decimal(10, 2)
-  dateOfManufacture     DateTime?            @db.Date
-  dateOfReceipt         DateTime?            @db.Date
-  warrantyPeriodMonths  Int?
-  status                String
-  assignedInstitutionId String?
-  assignedInstitution   Institution?         @relation(fields: [assignedInstitutionId], references: [id])
-  servicePlan           ServicePlan?
-  components            EquipmentComponent[]
-  assignments           Assignment[]
-  repairRequests        RepairRequest[]
-  disposal              EquipmentDisposal?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@map("equipment")
-  @@index([status])
-  @@index([category])
-  @@index([assignedInstitutionId])
-  @@index([name])
-  @@index([serialNumber])
-  @@index([modelNumber])
-}
-
-model EquipmentDisposal {
-  id                String    @id @default(cuid())
-  equipmentId       String    @unique
-  disposalDate      DateTime? @db.Date
-  disposalMethod    String?
-  reason            String
-  approvedByUserId  String
-  approvalReference String?
-  equipment         Equipment @relation(fields: [equipmentId], references: [id])
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@map("equipment_disposals")
-}
-
-model Assignment {
-  id             String    @id
-  equipmentId    String
-  equipment      Equipment @relation(fields: [equipmentId], references: [id])
-  fromEntity     String
-  toEntity       String
-  toEntityId     String
-  quantity       Decimal   @db.Decimal(10, 2)
-  assignmentDate DateTime
-  status         String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@map("assignments")
-  @@index([equipmentId])
-  @@index([toEntityId])
-  @@index([assignmentDate])
-}
-
-// ─────────────────────────────────────────────
-// REPAIR
-// ─────────────────────────────────────────────
-
-model RepairRequest {
-  id                    String      @id
-  equipmentId           String
-  equipment             Equipment   @relation(fields: [equipmentId], references: [id])
- 
-  equipmentName         String?
-  equipmentSerialNumber String?
-  componentName         String?
-  institutionName       String?
-  submittedByUserName   String?
-
-  componentId           String?
-  
-  faultDescription      String?
-  priority              String
-  submittedByUserId     String
-  submittedByUser       User        @relation(fields: [submittedByUserId], references: [id])
-
-  submissionDate        DateTime
-  institutionId         String
-  institution           Institution @relation(fields: [institutionId], references: [id])
- 
-  workOrders            WorkOrder[]
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@map("repair_requests")
-  @@index([institutionId])
-  @@index([equipmentId])
-  @@index([submittedByUserId])
-  @@index([priority])
-}
-
-model WorkOrder {
-  id                     String               @id
-  repairRequestId        String
-  repairRequest          RepairRequest        @relation(fields: [repairRequestId], references: [id])
-  assignedTechnicianId   String?
-  assignedTechnician     User?                @relation(fields: [assignedTechnicianId], references: [id])
-  assignedTechnicianName String?
-  diagnosisNotes         String?
-  status                 String
-  statusDate             DateTime
-  inspectedComponents    InspectedComponent[]
-  partsUsed              PartUsed[]
-  institutionId          String?
-  institution            Institution?         @relation("InstitutionWorkOrders", fields: [institutionId], references: [id])
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@map("work_orders")
-  @@index([status])
-  @@index([institutionId])
-  @@index([assignedTechnicianId])
-  @@index([repairRequestId])
-}
-
-model InspectedComponent {
-  id             String    @id
-  componentId    String
-  componentName  String?
-  inspected      Boolean
-  conditionNotes String?
-  workOrderId    String
-  workOrder      WorkOrder @relation(fields: [workOrderId], references: [id])
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@map("inspected_components")
-}
-
-model PartUsed {
-  id              String        @id
-  description     String?
-  quantity        Decimal       @db.Decimal(10, 2)
-  inventoryItemId String
-  inventoryItem   InventoryItem @relation(fields: [inventoryItemId], references: [id])
-  workOrderId     String
-  workOrder       WorkOrder     @relation(fields: [workOrderId], references: [id])
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@map("parts_used")
-}
-
-// ─────────────────────────────────────────────
-// PROCUREMENT
-// ─────────────────────────────────────────────
-
-model ProcurementPlan {
-  id                String          @id
-  itemDescription   String
-  estimatedQuantity Decimal         @db.Decimal(10, 2)
-  estimatedCost     Decimal         @db.Decimal(10, 2)
-  procurementMethod String
-  purchaseOrders    PurchaseOrder[]
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@map("procurement_plans")
-}
-
-model PurchaseOrder {
-  id             String              @id
-  planId         String
-  plan           ProcurementPlan     @relation(fields: [planId], references: [id])
-  supplierId     String
-  supplier       Supplier            @relation(fields: [supplierId], references: [id])
-  supplierName   String?
-  poNumber       String
-  orderDate      DateTime
-  approvalStatus String
-  totalCost      Decimal             @db.Decimal(10, 2)
-  items          PurchaseOrderItem[]
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@map("purchase_orders")
-  @@index([supplierId])
-  @@index([approvalStatus])
-  @@index([orderDate])
-}
-
-model PurchaseOrderItem {
-  id              String        @id
-  description     String
-  quantity        Decimal       @db.Decimal(10, 2)
-  unitCost        Decimal       @db.Decimal(10, 2)
-  category        String
-  purchaseOrderId String
-  purchaseOrder   PurchaseOrder @relation(fields: [purchaseOrderId], references: [id])
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@map("purchase_order_items")
-}
-
-model Grn {
-  id              String   @id
-  purchaseOrderId String
-  poNumber        String
-  grnNumber       String
-  receivedDate    DateTime
-  status          String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  
-  @@map("grns")
-}
-
-// ─────────────────────────────────────────────
-// AUDIT
-// ─────────────────────────────────────────────
-
-model AuditLog {
-  id            String       @id
-  timestamp     DateTime
-  userId        String
-  user          User         @relation(fields: [userId], references: [id])
-  userName      String?
-  userRole      String?
-  action        String
-  entityName    String
-  recordId      String
-  description   String?
-  institutionId String?
-  institution   Institution? @relation("InstitutionAuditLogs", fields: [institutionId], references: [id])
-
-  @@map("audit_logs")
-  @@index([timestamp])
-  @@index([userId])
-  @@index([institutionId])
-  @@index([entityName])
-  @@index([recordId])
-}
-
-// ─────────────────────────────────────────────
-// SEED SNAPSHOT
-// ─────────────────────────────────────────────
-
-model SeedSnapshot {
-  name       String   @id
-  payload    Json
-  updated_at DateTime @default(now()) @db.Timestamptz(6)
-
-  @@map("seed_snapshot")
 }

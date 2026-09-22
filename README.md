@@ -4,6 +4,10 @@ This is the consolidated, final state of every backend file we built and
 revised in this conversation, arranged to mirror your `src/` tree. Copy
 each file into the matching path in your project.
 
+
+npx prisma migrate reset - reset database
+
+
 ## New files (didn't exist before)
 
 ```

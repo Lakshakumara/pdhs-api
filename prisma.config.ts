@@ -8,7 +8,7 @@
 // npx prisma migrate reset reset the db
 // npx prisma studio Opens visual database browser
 // npx prisma db pull Reads existing DB and generates schema
-// npx prisma db seed-data
+// npx prisma db seed
 
 import "dotenv/config";
 import { defineConfig } from "prisma/config";

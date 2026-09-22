@@ -5,11 +5,11 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { JwtStrategy } from './strategies/jwt.strategy';
-// PrismaModule lives at src/prisma.module.ts (root). @Global(), so this
-// import is mostly for documentation — PrismaService is available
-// app-wide once PrismaModule is imported in AppModule.
-import { PrismaModule } from '../prisma.module';
-import { JwtAuthGuard, ActiveRoleGuard } from './auth.guard';
+import { PrismaModule } from '../prisma/prisma.module';
+import { JwtAuthGuard, ActiveRoleGuard } from '../common/guards/auth.guard';
+import { PermissionGuard } from '../common/guards/permission.guard';
+import { PermissionService } from './permission.service';
+import { ScopeService } from './scope.service';
 
 @Module({
   imports: [
@@ -19,23 +19,32 @@ import { JwtAuthGuard, ActiveRoleGuard } from './auth.guard';
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (config: ConfigService): JwtModuleOptions => ({
-        secret: config.get<string>('JWT_SECRET', 'dev-secret-change-me'),
+        secret: config.get<string>('JWT_SECRET', 'soft_solution_software_@_laksha_@_1227'),
         signOptions: {
-          // @nestjs/jwt types `expiresIn` as `number | StringValue` (a
-          // narrow template-literal type from the `ms` package), but
-          // ConfigService.get<string>() returns a plain `string`.
-          // '8h', '60m', '1d' etc. are all valid StringValue formats —
-          // only the TS type is too narrow to accept a generic string,
-          // hence the cast.
           expiresIn: config.get<string>('JWT_EXPIRES_IN', '8h') as any,
         },
       }),
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, JwtStrategy, JwtAuthGuard, ActiveRoleGuard],
-  // Exported so other feature modules can use these guards in their own
-  // @UseGuards(...) without re-declaring them as providers.
-  exports: [AuthService, JwtAuthGuard, ActiveRoleGuard],
+  providers: [
+    AuthService,
+    JwtStrategy,
+    JwtAuthGuard,
+    ActiveRoleGuard,
+    PermissionGuard,
+    PermissionService,
+    ScopeService,
+  ],
+  // Exported so feature modules can use guards + services via injection
+  // without re-declaring them as providers.
+  exports: [
+    AuthService,
+    JwtAuthGuard,
+    ActiveRoleGuard,
+    PermissionGuard,
+    PermissionService,
+    ScopeService,
+  ],
 })
 export class AuthModule {}

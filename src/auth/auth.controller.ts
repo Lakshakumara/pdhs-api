@@ -6,6 +6,7 @@ import {
   UseGuards,
   HttpCode,
   HttpStatus,
+  Get,
 } from '@nestjs/common';
 import type { Request } from 'express';
 import { AuthService } from './auth.service';
@@ -16,12 +17,25 @@ import {
   ForgotPasswordDto,
   ResetPasswordDto,
 } from './auth.dto';
-import { JwtAuthGuard } from './auth.guard';
+import { JwtAuthGuard } from '../common/guards/auth.guard';
+import type { JwtPayload } from './jwt-payload.interface';
+  import { PERMISSION_GROUPS, PERMISSIONS } from './constants/permission.registry';
+import { Permission } from './permission.enum';
+import { SkipPermission } from 'src/common/decorators/skip-permission.decorator';
 
 @Controller('api/auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
+
+@Get('permissions/meta')
+@SkipPermission()
+getPermissionMeta() {
+  return {
+    groups: PERMISSION_GROUPS,
+    definitions: PERMISSIONS,
+  };
+}
   // ───────────────────────────────────────────────────────────────────
   // POST /api/auth/login
   // Body: { username, password }
@@ -80,7 +94,7 @@ export class AuthController {
   @Post('logout-all')
   @HttpCode(HttpStatus.NO_CONTENT)
   async logoutAll(@Req() req: Request) {
-    await this.authService.logoutAllDevices(req.ruser!.sub);
+    await this.authService.logoutAllDevices((req.user as JwtPayload).sub);
   }
 
   // ───────────────────────────────────────────────────────────────────
@@ -94,7 +108,7 @@ export class AuthController {
   @HttpCode(HttpStatus.NO_CONTENT)
   async changePassword(@Req() req: Request, @Body() dto: ChangePasswordDto) {
     await this.authService.changePassword(
-      req.ruser!.sub,
+      (req.user as JwtPayload).sub,
       dto.currentPassword,
       dto.newPassword,
     );
@@ -124,18 +138,3 @@ export class AuthController {
     await this.authService.resetPassword(dto.token, dto.newPassword);
   }
 }
-
-
-/*import { Controller, Post, Body, HttpCode, HttpStatus } from '@nestjs/common';
-import { AuthService } from './auth.service';
-
-@Controller('api/auth')
-export class AuthController {
-  constructor(private readonly authService: AuthService) {}
-
-  @Post('login')
-  @HttpCode(HttpStatus.OK)
-  async login(@Body() body: any) {
-    return this.authService.login(body.username, body.password);
-  }
-}*/
