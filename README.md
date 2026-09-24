@@ -99,3 +99,25 @@ src/
 - Handlers call `permissionService.require(activeRole.role, Permission.X)`
   and `scopeService.xxxWhere(activeRole)` — unchanged from your existing
   pattern.
+
+# installation and Run
+## pm2
+1. Run it persistently — don't just npm run start:prod
+```
+npm install -g pm2 
+pm2 start dist/main.js --name nestjs-api
+pm2 save
+```
+2. Make PM2 survive server reboots
+```
+npm install -g pm2-windows-startup
+pm2-startup install
+pm2 save
+```
+3. Useful PM2 commands going forward:
+```
+pm2 list          # see running apps
+pm2 logs nestjs-api # view logs
+pm2 restart nestjs-api
+pm2 stop nestjs-api
+```
