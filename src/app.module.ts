@@ -10,8 +10,8 @@ import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { InventoryModule } from './modules/inventory/inventory.module';
 import { AuditModule } from './modules/audit/audit.module';
 import { InstituteModule } from './modules/institute/institute.module';
-import { ServeStaticModule } from '@nestjs/serve-static';
-import { join } from 'path';
+//import { ServeStaticModule } from '@nestjs/serve-static';
+//import { join } from 'path';
 
 @Module({
   imports: [
@@ -26,10 +26,11 @@ import { join } from 'path';
     DashboardModule,
     InventoryModule,
     AuditModule,
-    ServeStaticModule.forRoot({
+   /* ServeStaticModule.forRoot({
       rootPath: join(__dirname, '..', 'client'),
+      //exclude: ['/api/{*path}'],
       exclude: ['/api/(.*)'],
-    }),
+    }),*/
   ],
 })
 export class AppModule {}
