@@ -26,11 +26,6 @@ import { InstituteModule } from './modules/institute/institute.module';
     DashboardModule,
     InventoryModule,
     AuditModule,
-   /* ServeStaticModule.forRoot({
-      rootPath: join(__dirname, '..', 'client'),
-      //exclude: ['/api/{*path}'],
-      exclude: ['/api/(.*)'],
-    }),*/
   ],
 })
 export class AppModule {}
