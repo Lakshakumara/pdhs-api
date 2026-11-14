@@ -589,8 +589,8 @@ export class RepairService {
 
   // ── FIND WORK ORDER BY REPAIR REQUEST ──────────────────────────────
   async findWorkOrder(activeRole: JwtRoleClaim, requestId: string) {
-    this.permissionService.require(
-      activeRole.role,
+    await this.permissionService.requireForUser(
+      activeRole.sub,
       Permission.REPAIR_REQUEST_VIEW,
     );
     const where = this.scopeService.scopeWhere(activeRole);
@@ -610,8 +610,8 @@ export class RepairService {
 
   // ── FIND ALL WORK ORDERS ───────────────────────────────────────────
   async findWorkOrders(activeRole: JwtRoleClaim, query: QueryWorkOrderDto) {
-    this.permissionService.require(
-      activeRole.role,
+    await this.permissionService.requireForUser(
+      activeRole.sub,
       Permission.REPAIR_REQUEST_VIEW,
     );
     const scopeWhere = this.scopeService.scopeWhere(activeRole);

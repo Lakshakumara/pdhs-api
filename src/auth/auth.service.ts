@@ -252,6 +252,7 @@ export class AuthService {
     roles: { role: any; scopeType: any; scopeId: string | null }[];
   }): string {
     const roleClaims: JwtRoleClaim[] = user.roles.map((r) => ({
+      sub: user.id,
       role: r.role,
       scopeType: r.scopeType,
       scopeId: r.scopeId,

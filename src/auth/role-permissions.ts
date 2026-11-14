@@ -1,7 +1,65 @@
 // role-permissions.ts
+//
+// AUTHORIZATION POLICY — the single backend source for:
+//   ROLE_PERMISSIONS  role → default permissions (applied at user create /
+//                     role add; exposed via /auth/permissions/meta)
+//   SCOPE_ROLES       scope level → roles assignable at that level
+//   ROLE_META / SCOPE_META  display metadata (labels, colors) for the UI
+// The frontend gets all of these generated into
+// src/app/core/models/permission.types.ts by `npm run gen:perms`.
 
-import { RoleType } from '@prisma/client';
+import { RoleType, ScopeType } from '@prisma/client';
 import { Permission } from './permission.enum';
+
+// Roles allowed to be assigned at each scope level
+export const SCOPE_ROLES: Record<ScopeType, RoleType[]> = {
+  PDHS: [
+    RoleType.SUPER_ADMIN_PDHS,
+    RoleType.ADMIN_PDHS,
+    RoleType.VIEWER_PDHS,
+    RoleType.BIOMEDICAL_TECHNICIAN,
+    RoleType.PROCUREMENT_OFFICER,
+  ],
+  RDHS: [
+    RoleType.SUPER_ADMIN_RDHS,
+    RoleType.ADMIN_RDHS,
+    RoleType.VIEWER_RDHS,
+    RoleType.STORE_KEEPER,
+    RoleType.BIOMEDICAL_TECHNICIAN,
+  ],
+  INSTITUTE: [
+    RoleType.SUPER_ADMIN_INSTITUTE,
+    RoleType.ADMIN_INSTITUTE,
+    RoleType.VIEWER_INSTITUTE,
+    RoleType.INSTITUTION_USER,
+    RoleType.STORE_KEEPER,
+    RoleType.BIOMEDICAL_TECHNICIAN,
+  ],
+};
+
+// Display metadata for role badges / selects (UI only — not auth logic)
+export const ROLE_META: Record<RoleType, { label: string; color: string }> = {
+  SUPER_ADMIN_PDHS: { label: 'Super Admin (PDHS)', color: '#dc2626' },
+  ADMIN_PDHS: { label: 'Admin (PDHS)', color: '#7c3aed' },
+  VIEWER_PDHS: { label: 'Viewer (PDHS)', color: '#0284c7' },
+  SUPER_ADMIN_RDHS: { label: 'Super Admin (RDHS)', color: '#ea580c' },
+  ADMIN_RDHS: { label: 'Admin (RDHS)', color: '#6d28d9' },
+  VIEWER_RDHS: { label: 'Viewer (RDHS)', color: '#0369a1' },
+  SUPER_ADMIN_INSTITUTE: { label: 'Super Admin (Institute)', color: '#d97706' },
+  ADMIN_INSTITUTE: { label: 'Admin (Institute)', color: '#5b21b6' },
+  VIEWER_INSTITUTE: { label: 'Viewer (Institute)', color: '#075985' },
+  STORE_KEEPER: { label: 'Store Keeper', color: '#16a34a' },
+  BIOMEDICAL_TECHNICIAN: { label: 'Biomedical Technician', color: '#059669' },
+  PROCUREMENT_OFFICER: { label: 'Procurement Officer', color: '#0d9488' },
+  INSTITUTION_USER: { label: 'Institution User', color: '#6b7280' },
+};
+
+// Display metadata for scope level selects
+export const SCOPE_META: Record<ScopeType, { label: string }> = {
+  PDHS: { label: 'PDHS (System-wide)' },
+  RDHS: { label: 'RDHS (District)' },
+  INSTITUTE: { label: 'Institute' },
+};
 
 export const ROLE_PERMISSIONS: Record<RoleType, Permission[]> = {
   SUPER_ADMIN_PDHS: Object.values(Permission).filter(

@@ -71,7 +71,10 @@ export class ActiveRoleGuard implements CanActivate {
       activeRole = jwtRoles[0];
     }
 
-    req.activeRole = activeRole;
+    // Always attach the caller's userId — required by service-level
+    // requireForUser() checks. Older tokens don't carry `sub` inside
+    // role claims, so fall back to the payload (which always has it).
+    req.activeRole = { ...activeRole, sub: activeRole.sub ?? req.user.sub };
     return true;
   }
 }

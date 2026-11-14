@@ -23,6 +23,11 @@ import {
   PERMISSION_GROUPS,
   PERMISSIONS,
 } from './constants/permission.registry';
+import {
+  ROLE_META,
+  ROLE_PERMISSIONS,
+  SCOPE_META,
+} from './role-permissions';
 import { Permission } from './permission.enum';
 import { SkipPermission } from 'src/common/decorators/skip-permission.decorator';
 
@@ -30,12 +35,18 @@ import { SkipPermission } from 'src/common/decorators/skip-permission.decorator'
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
+  // Everything the UI needs to render roles/scopes/permissions —
+  // served straight from the backend policy files so the frontend
+  // never carries its own copy.
   @Get('permissions/meta')
   @SkipPermission()
   getPermissionMeta() {
     return {
       groups: PERMISSION_GROUPS,
       definitions: PERMISSIONS,
+      roleDefaults: ROLE_PERMISSIONS,
+      roleMeta: ROLE_META,
+      scopeMeta: SCOPE_META,
     };
   }
   // ───────────────────────────────────────────────────────────────────

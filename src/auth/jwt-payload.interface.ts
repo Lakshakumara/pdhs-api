@@ -6,12 +6,16 @@ import { RoleType, ScopeType } from '@prisma/client';
  * round-trip on every request.
  *
  * Deliberately does NOT include `permission`. Permission checks happen
- * via the existing PermissionService.require(role, permission), called
- * inside each handler with req.activeRole.role — computed fresh from
- * ROLE_PERMISSIONS every request, so permission-set changes take effect
- * immediately without waiting for token expiry.
+ * against the UserPermission table (PermissionService.requireForUser /
+ * PermissionGuard), so permission-set changes and expiring grants are
+ * evaluated fresh on every request.
+ *
+ * `sub` (userId) is stamped into each claim at login and re-attached by
+ * ActiveRoleGuard from the payload for pre-existing tokens, so service
+ * level checks always know WHICH user to look up.
  */
 export interface JwtRoleClaim {
+  sub: string;
   role: RoleType;
   scopeType: ScopeType;
   scopeId: string | null;
@@ -35,8 +39,9 @@ export interface JwtPayload {
 //                      to JwtPayload where you need to access .sub etc.
 // - req.activeRole  ← populated by ActiveRoleGuard (the JwtRoleClaim
 //                      matching x-role/x-scope-* headers, or roles[0]
-//                      if absent). Consume via @ActiveRole() decorator,
-//                      then pass to PermissionService.require() and
+//                      if absent; `sub` always filled from the payload).
+//                      Consume via @ActiveRole() decorator, then pass to
+//                      PermissionService.requireForUser() and
 //                      ScopeService.xxxWhere().
 // ─────────────────────────────────────────────────────────────────────────
 declare global {

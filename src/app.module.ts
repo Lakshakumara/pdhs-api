@@ -5,7 +5,6 @@ import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './modules/users/users.module';
 import { EquipmentModule } from './modules/equipment/equipment.module';
 import { RepairModule } from './modules/repair/repair.module';
-import { OrganizationModule } from './modules/organization/organization.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { InventoryModule } from './modules/inventory/inventory.module';
 import { AuditModule } from './modules/audit/audit.module';
@@ -23,7 +22,6 @@ import { SupplierModule } from './modules/supplier/supplier.module';
     InstituteModule,
     EquipmentModule,
     RepairModule,
-    OrganizationModule,
     DashboardModule,
     InventoryModule,
     AuditModule,

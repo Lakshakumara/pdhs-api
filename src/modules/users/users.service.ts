@@ -8,7 +8,7 @@ import {
 import { PrismaService } from '../../prisma/prisma.service';
 import { ScopeService } from '../../auth/scope.service';
 import { JwtRoleClaim } from '../../auth/jwt-payload.interface';
-import { ROLE_PERMISSIONS } from '../../auth/role-permissions';
+import { ROLE_PERMISSIONS, SCOPE_ROLES } from '../../auth/role-permissions';
 import { Permission } from '../../auth/permission.enum';
 import * as bcrypt from 'bcrypt';
 import { randomUUID } from 'crypto';
@@ -23,32 +23,6 @@ import {
 
 const BCRYPT_ROUNDS = 12;
 const DEFAULT_PASSWORD = 'pdhs@123';
-
-// Roles allowed to be assigned at each scope level
-const SCOPE_ROLES: Record<ScopeType, RoleType[]> = {
-  PDHS: [
-    RoleType.SUPER_ADMIN_PDHS,
-    RoleType.ADMIN_PDHS,
-    RoleType.VIEWER_PDHS,
-    RoleType.BIOMEDICAL_TECHNICIAN,
-    RoleType.PROCUREMENT_OFFICER,
-  ],
-  RDHS: [
-    RoleType.SUPER_ADMIN_RDHS,
-    RoleType.ADMIN_RDHS,
-    RoleType.VIEWER_RDHS,
-    RoleType.STORE_KEEPER,
-    RoleType.BIOMEDICAL_TECHNICIAN,
-  ],
-  INSTITUTE: [
-    RoleType.SUPER_ADMIN_INSTITUTE,
-    RoleType.ADMIN_INSTITUTE,
-    RoleType.VIEWER_INSTITUTE,
-    RoleType.INSTITUTION_USER,
-    RoleType.STORE_KEEPER,
-    RoleType.BIOMEDICAL_TECHNICIAN,
-  ],
-};
 
 @Injectable()
 export class UsersService {
@@ -376,7 +350,9 @@ export class UsersService {
     dto: GrantPermissionDto,
   ) {
     await this.assertUserInScope(activeRole, userId);
-    this.assertCanGrantPermission(activeRole, dto.permission as Permission);
+    await this.assertCanGrantPermissions(activeRole, [
+      dto.permission as Permission,
+    ]);
 
     return this.prisma.userPermission.upsert({
       where: { userId_permission: { userId, permission: dto.permission } },
@@ -418,9 +394,10 @@ export class UsersService {
     permissions: string[],
   ) {
     await this.assertUserInScope(activeRole, userId);
-    for (const p of permissions) {
-      this.assertCanGrantPermission(activeRole, p as Permission);
-    }
+    await this.assertCanGrantPermissions(
+      activeRole,
+      permissions.map((p) => p as Permission),
+    );
 
     await this.prisma.$transaction([
       this.prisma.userPermission.deleteMany({
@@ -522,15 +499,28 @@ export class UsersService {
     }
   }
 
-  private assertCanGrantPermission(
+  // The caller may only grant permissions they actually HOLD themselves
+  // (UserPermission table — not role defaults, so revoked/customized
+  // grants are respected). SUPER_ADMIN_PDHS may grant anything.
+  private async assertCanGrantPermissions(
     activeRole: JwtRoleClaim,
-    permission: Permission,
+    permissions: Permission[],
   ) {
     if (activeRole.role === 'SUPER_ADMIN_PDHS') return;
-    const callerPerms = ROLE_PERMISSIONS[activeRole.role as RoleType] ?? [];
-    if (!callerPerms.includes(permission)) {
+    const now = new Date();
+    const held = await this.prisma.userPermission.findMany({
+      where: {
+        userId: activeRole.sub,
+        OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
+      },
+      select: { permission: true },
+    });
+    const heldSet = new Set(held.map((h) => h.permission));
+    const missing = permissions.filter((p) => !heldSet.has(p));
+    if (missing.length > 0) {
       throw new ForbiddenException(
-        `You cannot grant permission '${permission}' — you do not hold it yourself`,
+        `You cannot grant permission${missing.length > 1 ? 's' : ''} ` +
+          `${missing.join(', ')} — you do not hold ${missing.length > 1 ? 'them' : 'it'} yourself`,
       );
     }
   }

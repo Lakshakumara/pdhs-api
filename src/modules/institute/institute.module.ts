@@ -1,13 +1,16 @@
 import { Module } from '@nestjs/common';
 import { AuthModule } from '../../auth/auth.module';
-import { PrismaQueryBuilder } from '../../prisma/prisma-query-builder';
+import { AuditModule } from '../audit/audit.module';
 import { InstituteService } from './institute.service';
-import { InstituteController } from './institute.controller';
+import {
+  DistrictController,
+  InstituteController,
+} from './institute.controller';
 
 @Module({
-  imports: [AuthModule],
-  controllers: [InstituteController],
-  providers: [InstituteService, PrismaQueryBuilder],
+  imports: [AuthModule, AuditModule],
+  controllers: [InstituteController, DistrictController],
+  providers: [InstituteService],
   exports: [InstituteService],
 })
 export class InstituteModule {}

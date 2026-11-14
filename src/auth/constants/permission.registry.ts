@@ -325,6 +325,14 @@ export const PERMISSIONS = {
 export type Permission = keyof typeof PERMISSIONS;
 export const ALL_PERMISSIONS = Object.keys(PERMISSIONS) as Permission[];
 
+// Const object mirroring the keys — gives `Permission.X` value access while
+// `Permission` (type) stays the union above. permission.enum.ts re-exports
+// this so existing `import { Permission } from '.../permission.enum'` sites
+// keep working. NEVER hand-edit entries: add them to PERMISSIONS above.
+export const Permission = Object.fromEntries(
+  Object.keys(PERMISSIONS).map((k) => [k, k]),
+) as { [K in keyof typeof PERMISSIONS]: K };
+
 export const PERMISSION_GROUPS = Object.values(PERMISSIONS).reduce(
   (acc, curr, idx) => {
     const key = Object.keys(PERMISSIONS)[idx] as Permission;

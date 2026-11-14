@@ -22,6 +22,8 @@ export class PermissionService {
     userId: string,
     permission: Permission,
   ): Promise<boolean> {
+    // Fail closed — a missing userId must never match a row.
+    if (!userId) return false;
     const now = new Date();
     const record = await this.prisma.userPermission.findFirst({
       where: {
@@ -57,55 +59,4 @@ export class PermissionService {
     });
     return records.map((r) => r.permission);
   }
-
-  // ─────────────────────────────────────────────────────────────────────
-  // Role-level check (synchronous) — used by ActiveRoleGuard /
-  // controller-layer guards where we only have the role string, not
-  // userId. Kept for backwards compatibility with existing controllers
-  // that haven't been migrated to user-level checks yet.
-  // ─────────────────────────────────────────────────────────────────────
-
-  hasPermission(role: string, permission: Permission): boolean {
-    // Lazy import to avoid circular dep — role-permissions.ts is a
-    // static map and doesn't import any NestJS providers.
-
-    const { ROLE_PERMISSIONS } = require('./role-permissions');
-    const permissions: Permission[] = ROLE_PERMISSIONS[role] ?? [];
-    return permissions.includes(permission);
-  }
-
-  require(role: string, permission: Permission): void {
-    if (!this.hasPermission(role, permission)) {
-      throw new ForbiddenException('Permission denied');
-    }
-  }
 }
-
-/*import {
-  ForbiddenException,
-  Injectable
-} from '@nestjs/common';
-import { Permission } from 'src/auth/permission.enum';
-import { ROLE_PERMISSIONS } from 'src/auth/role-permissions';
-
-
-@Injectable()
-export class PermissionService {
-
-  hasPermission(
-    role: string,
-    permission: Permission): boolean {
-
-    const permissions = ROLE_PERMISSIONS[role] ?? [];
-
-    return permissions.includes(
-      permission
-    );
-  }
-
-  require(role: string, permission: Permission): void {
-    if (!this.hasPermission(role, permission)) {
-      throw new ForbiddenException('Permission denied');
-    }
-  }
-}*/
