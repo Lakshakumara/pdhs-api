@@ -4,7 +4,11 @@ import { ScopeService } from '../../auth/scope.service';
 import { PrismaQueryBuilder } from '../../prisma/prisma-query-builder';
 import { JwtRoleClaim } from '../../auth/jwt-payload.interface';
 import { IdService, ID_PREFIXES } from '../../shared/id/id.service';
-import { CreateEquipmentDto, QueryEquipmentDto, UpdateEquipmentDto } from './dto/equipment.dto';
+import {
+  CreateEquipmentDto,
+  QueryEquipmentDto,
+  UpdateEquipmentDto,
+} from './dto/equipment.dto';
 
 @Injectable()
 export class EquipmentService {
@@ -31,12 +35,15 @@ export class EquipmentService {
         where,
         skip,
         take,
-        include: { assignedInstitution: true, spareParts: true, servicePlan: true },
+        include: {
+          assignedInstitution: true,
+          spareParts: true,
+          servicePlan: true,
+        },
         orderBy: { name: 'asc' },
       }),
       this.prisma.equipment.count({ where }),
     ]);
-
     return {
       items,
       page,
@@ -48,7 +55,8 @@ export class EquipmentService {
 
   // ── CREATE ────────────────────────────────────────────────────────
   async addEquipment(activeRole: JwtRoleClaim, data: CreateEquipmentDto) {
-    const { spareParts, servicePlan, assignedInstitutionId, ...equipmentData } = data;
+    const { spareParts, servicePlan, assignedInstitutionId, ...equipmentData } =
+      data;
 
     return this.prisma.equipment.create({
       data: {
@@ -63,9 +71,14 @@ export class EquipmentService {
   }
 
   // ── UPDATE ────────────────────────────────────────────────────────
-  async updateEquipment(activeRole: JwtRoleClaim, id: string, data: UpdateEquipmentDto) {
-    const { spareParts, servicePlan, assignedInstitutionId, ...equipmentData } = data;
-
+  async updateEquipment(
+    activeRole: JwtRoleClaim,
+    id: string,
+    data: UpdateEquipmentDto,
+  ) {
+    const { spareParts, servicePlan, assignedInstitutionId, ...equipmentData } =
+      data;
+console.log('update data ', data)
     return this.prisma.equipment.update({
       where: { id },
       data: {

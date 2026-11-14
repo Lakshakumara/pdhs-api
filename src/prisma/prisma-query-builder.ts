@@ -26,7 +26,7 @@ export class PrismaQueryBuilder {
     const size = Number(query.size ?? 20);
 
     const conditions: any[] = [scopeWhere];
-console.log('Query', query)
+    console.log('Query', query);
     // ── Search (case-insensitive ILIKE across searchFields) ────────────
     if (query.search != undefined && query.search?.trim()) {
       conditions.push({
@@ -42,12 +42,10 @@ console.log('Query', query)
     // ── Exact Filters ──────────────────────────────────────────────────
     exactFilters.forEach((field) => {
       const value = query[field];
-      console.log('Query extract',query, value)
+      console.log('Query extract', query, value);
       if (value !== undefined && value !== null && value !== '') {
         conditions.push({
-          OR: exactFilters.map((f) =>
-            this.buildContainsCondition(f, value),
-          ),
+          OR: exactFilters.map((f) => this.buildContainsCondition(f, value)),
         });
       }
     });

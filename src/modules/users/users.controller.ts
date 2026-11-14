@@ -1,10 +1,24 @@
 import {
-  Controller, Get, Post, Patch, Delete, Put,
-  Body, Param, Query, Req, UseGuards, HttpCode, HttpStatus,
+  Controller,
+  Get,
+  Post,
+  Patch,
+  Delete,
+  Put,
+  Body,
+  Param,
+  Query,
+  Req,
+  UseGuards,
+  HttpCode,
+  HttpStatus,
 } from '@nestjs/common';
 import type { Request } from 'express';
 import { UsersService } from './users.service';
-import type { JwtPayload, JwtRoleClaim } from '../../auth/jwt-payload.interface';
+import type {
+  JwtPayload,
+  JwtRoleClaim,
+} from '../../auth/jwt-payload.interface';
 import { PermissionService } from '../../auth/permission.service';
 import { Permission } from '../../auth/permission.enum';
 import { JwtAuthGuard, ActiveRoleGuard } from '../../common/guards/auth.guard';
@@ -67,7 +81,11 @@ export class UsersController {
     @Req() req: Request,
     @Body() dto: CreateUserDto,
   ) {
-    return this.usersService.createUser(activeRole, (req.user as JwtPayload).sub, dto);
+    return this.usersService.createUser(
+      activeRole,
+      (req.user as JwtPayload).sub,
+      dto,
+    );
   }
 
   // ── PATCH /api/users/:id ───────────────────────────────────────────
@@ -127,7 +145,12 @@ export class UsersController {
     @Param('id') userId: string,
     @Body() dto: AddRoleDto,
   ) {
-    return this.usersService.addRole(activeRole, (req.user as JwtPayload).sub, userId, dto);
+    return this.usersService.addRole(
+      activeRole,
+      (req.user as JwtPayload).sub,
+      userId,
+      dto,
+    );
   }
 
   // ── DELETE /api/users/:id/roles/:roleId ───────────────────────────
@@ -165,7 +188,12 @@ export class UsersController {
     @Param('id') userId: string,
     @Body() dto: GrantPermissionDto,
   ) {
-    return this.usersService.grantPermission(activeRole, (req.user as JwtPayload).sub, userId, dto);
+    return this.usersService.grantPermission(
+      activeRole,
+      (req.user as JwtPayload).sub,
+      userId,
+      dto,
+    );
   }
 
   // ── DELETE /api/users/:id/permissions/:permissionId ───────────────
@@ -189,6 +217,11 @@ export class UsersController {
     @Param('id') userId: string,
     @Body() body: { permissions: string[] },
   ) {
-    return this.usersService.syncPermissions(activeRole, (req.user as JwtPayload).sub, userId, body.permissions);
+    return this.usersService.syncPermissions(
+      activeRole,
+      (req.user as JwtPayload).sub,
+      userId,
+      body.permissions,
+    );
   }
 }

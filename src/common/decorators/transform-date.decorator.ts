@@ -1,4 +1,4 @@
-import { Transform } from 'class-transformer'
+import { Transform } from 'class-transformer';
 
 /**
  * Transforms incoming string dates (e.g. "2024-02-15") to JavaScript Date objects.
@@ -6,9 +6,9 @@ import { Transform } from 'class-transformer'
  */
 export function TransformDate() {
   return Transform(({ value }) => {
-    if (!value) return null
-    if (value instanceof Date) return value
-    const date = new Date(value)
-    return isNaN(date.getTime()) ? null : date
-  })
+    if (!value) return null;
+    if (value instanceof Date) return value;
+    const date = new Date(value);
+    return isNaN(date.getTime()) ? null : date;
+  });
 }

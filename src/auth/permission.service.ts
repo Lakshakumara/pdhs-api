@@ -5,7 +5,6 @@ import { Permission } from './permission.enum';
 
 @Injectable()
 export class PermissionService {
-
   constructor(private prisma: PrismaService) {}
 
   // ─────────────────────────────────────────────────────────────────────
@@ -19,16 +18,16 @@ export class PermissionService {
   //   await this.permissionService.requireForUser(userId, Permission.X);
   // ─────────────────────────────────────────────────────────────────────
 
-  async hasPermissionForUser(userId: string, permission: Permission): Promise<boolean> {
+  async hasPermissionForUser(
+    userId: string,
+    permission: Permission,
+  ): Promise<boolean> {
     const now = new Date();
     const record = await this.prisma.userPermission.findFirst({
       where: {
         userId,
-        permission: permission as string,
-        OR: [
-          { expiresAt: null },
-          { expiresAt: { gt: now } },
-        ],
+        permission: permission,
+        OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
       },
     });
     return !!record;
@@ -52,14 +51,11 @@ export class PermissionService {
     const records = await this.prisma.userPermission.findMany({
       where: {
         userId,
-        OR: [
-          { expiresAt: null },
-          { expiresAt: { gt: now } },
-        ],
+        OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
       },
       select: { permission: true },
     });
-    return records.map(r => r.permission);
+    return records.map((r) => r.permission);
   }
 
   // ─────────────────────────────────────────────────────────────────────
@@ -72,7 +68,7 @@ export class PermissionService {
   hasPermission(role: string, permission: Permission): boolean {
     // Lazy import to avoid circular dep — role-permissions.ts is a
     // static map and doesn't import any NestJS providers.
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
+
     const { ROLE_PERMISSIONS } = require('./role-permissions');
     const permissions: Permission[] = ROLE_PERMISSIONS[role] ?? [];
     return permissions.includes(permission);
@@ -84,9 +80,6 @@ export class PermissionService {
     }
   }
 }
-
-
-
 
 /*import {
   ForbiddenException,

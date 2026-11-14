@@ -1,5 +1,11 @@
 import {
-  IsString, IsOptional, IsArray, IsIn, ValidateNested, IsBoolean, IsNumber,
+  IsString,
+  IsOptional,
+  IsArray,
+  IsIn,
+  ValidateNested,
+  IsBoolean,
+  IsNumber,
 } from 'class-validator';
 import { Transform, Type } from 'class-transformer';
 import { TransformDate } from '../../../common/decorators/transform-date.decorator';
@@ -105,9 +111,9 @@ export class CreateInspectedSparePartDto {
   sparePartName?: string;
 
   @Transform(({ value }) => {
-    if (value === 'true') return true
-    if (value === 'false') return false
-    return value
+    if (value === 'true') return true;
+    if (value === 'false') return false;
+    return value;
   })
   @IsBoolean()
   inspected!: boolean;
@@ -223,7 +229,6 @@ export class QueryWorkOrderDto extends BaseQueryDto {
   status?: string;
 }
 
-
 export interface EscalateToVendorDto {
   vendorName: string;
   vendorContact?: string;
@@ -244,4 +249,33 @@ export interface EscalateToVendorDto {
 export interface VendorCompletedDto {
   returnDate: Date;
   returnNotes?: string;
+}
+
+// ─────────────────────────────────────────────
+// POST-REPAIR CHAIN: feedback → payment → MS → RDHS → PDHD
+// ─────────────────────────────────────────────
+
+export class SubmitFeedbackDto {
+  @IsBoolean()
+  approved!: boolean;
+
+  @IsOptional()
+  @IsString()
+  comment?: string;
+}
+
+export class RecordPaymentDto {
+  @IsOptional()
+  @IsString()
+  comment?: string;
+}
+
+export class ApproveStageDto {
+  @IsString()
+  @IsIn(['MS', 'RDHS', 'PDHS'])
+  stage!: 'MS' | 'RDHS' | 'PDHS';
+
+  @IsOptional()
+  @IsString()
+  comment?: string;
 }

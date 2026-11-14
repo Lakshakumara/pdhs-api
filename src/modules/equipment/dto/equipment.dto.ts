@@ -150,6 +150,10 @@ export class CreateEquipmentDto {
   @IsString()
   id?: string;
 
+  @IsOptional()
+  @IsString()
+  invoiceNumber?: string;
+
   @IsString()
   name!: string;
 
@@ -231,6 +235,10 @@ export class UpdateEquipmentDto {
   @IsString()
   id?: string;
 
+  @IsOptional()
+  @IsString()
+  invoiceNumber?: string;
+  
   @IsOptional()
   @IsString()
   name?: string;

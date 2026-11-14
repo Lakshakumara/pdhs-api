@@ -47,7 +47,8 @@ export class ActiveRoleGuard implements CanActivate {
 
     const headerRole = req.headers['x-role'] as string | undefined;
     const headerScopeType = req.headers['x-scope-type'] as string | undefined;
-    const headerScopeId = (req.headers['x-scope-id'] as string | undefined) || null;
+    const headerScopeId =
+      (req.headers['x-scope-id'] as string | undefined) || null;
 
     let activeRole: JwtRoleClaim | undefined;
 

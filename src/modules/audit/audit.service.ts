@@ -24,7 +24,7 @@ export class AuditService {
     private readonly prisma: PrismaService,
     private readonly scopeService: ScopeService,
     private readonly queryBuilder: PrismaQueryBuilder,
-  ) { }
+  ) {}
 
   async findAuditLogs(activeRole: JwtRoleClaim, query: BaseQueryDto) {
     const scopeWhere = this.scopeService.scopeWhere(activeRole);

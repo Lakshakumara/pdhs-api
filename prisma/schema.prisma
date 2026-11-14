@@ -126,8 +126,12 @@ model Supplier {
   contactPerson    String?
   phone            String?
   email            String?
+  contactPhone     String?
+  contactEmail     String?
+  whatsApp         String?
   performanceNotes String?
   rating           Int?
+  isDeleted        Boolean         @default(false)
   createdAt        DateTime        @default(now())
   updatedAt        DateTime        @updatedAt
   purchaseOrders   PurchaseOrder[]
@@ -301,6 +305,7 @@ model WorkOrder {
   diagnosisNotes         String?
   status                 String
   statusDate             DateTime
+  completedDate          DateTime?
   institutionId          String?
   createdAt              DateTime             @default(now())
   updatedAt              DateTime             @updatedAt
@@ -309,7 +314,14 @@ model WorkOrder {
   assignedTechnician     User?                @relation(fields: [assignedTechnicianId], references: [id])
   institution            Institution?         @relation("InstitutionWorkOrders", fields: [institutionId], references: [id])
   repairRequest          RepairRequest        @relation(fields: [repairRequestId], references: [id])
-  vendorRepair           VendorRepair?  
+  vendorRepair           VendorRepair?
+
+  // Post-repair chain: feedback → payment → MS → RDHS → PDHD approvals
+  feedbackComment        String?
+  paymentComment         String?
+  msApprovalComment      String?
+  rdhsApprovalComment    String?
+  pdhsApprovalComment    String?
 
   @@index([status])
   @@index([institutionId])

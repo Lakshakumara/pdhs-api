@@ -76,12 +76,11 @@ export class PermissionGuard implements CanActivate {
 
     const req = context.switchToHttp().getRequest();
 
-    const resolved =
-      typeof declared === 'function'
-        ? (declared as PermissionResolver)(req)
-        : declared;
+    const resolved = typeof declared === 'function' ? declared(req) : declared;
 
-    const required: Permission[] = Array.isArray(resolved) ? resolved : [resolved];
+    const required: Permission[] = Array.isArray(resolved)
+      ? resolved
+      : [resolved];
 
     if (required.length === 0) {
       throw new ForbiddenException(

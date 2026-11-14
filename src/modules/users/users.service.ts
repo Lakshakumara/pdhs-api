@@ -27,17 +27,26 @@ const DEFAULT_PASSWORD = 'pdhs@123';
 // Roles allowed to be assigned at each scope level
 const SCOPE_ROLES: Record<ScopeType, RoleType[]> = {
   PDHS: [
-    RoleType.SUPER_ADMIN_PDHS, RoleType.ADMIN_PDHS, RoleType.VIEWER_PDHS,
-    RoleType.BIOMEDICAL_TECHNICIAN, RoleType.PROCUREMENT_OFFICER,
+    RoleType.SUPER_ADMIN_PDHS,
+    RoleType.ADMIN_PDHS,
+    RoleType.VIEWER_PDHS,
+    RoleType.BIOMEDICAL_TECHNICIAN,
+    RoleType.PROCUREMENT_OFFICER,
   ],
   RDHS: [
-    RoleType.SUPER_ADMIN_RDHS, RoleType.ADMIN_RDHS, RoleType.VIEWER_RDHS,
-    RoleType.STORE_KEEPER, RoleType.BIOMEDICAL_TECHNICIAN,
+    RoleType.SUPER_ADMIN_RDHS,
+    RoleType.ADMIN_RDHS,
+    RoleType.VIEWER_RDHS,
+    RoleType.STORE_KEEPER,
+    RoleType.BIOMEDICAL_TECHNICIAN,
   ],
   INSTITUTE: [
-    RoleType.SUPER_ADMIN_INSTITUTE, RoleType.ADMIN_INSTITUTE,
-    RoleType.VIEWER_INSTITUTE, RoleType.INSTITUTION_USER,
-    RoleType.STORE_KEEPER, RoleType.BIOMEDICAL_TECHNICIAN,
+    RoleType.SUPER_ADMIN_INSTITUTE,
+    RoleType.ADMIN_INSTITUTE,
+    RoleType.VIEWER_INSTITUTE,
+    RoleType.INSTITUTION_USER,
+    RoleType.STORE_KEEPER,
+    RoleType.BIOMEDICAL_TECHNICIAN,
   ],
 };
 
@@ -62,23 +71,30 @@ export class UsersService {
       updatedAt: true,
       institution: {
         select: {
-          id: true, name: true,
+          id: true,
+          name: true,
           districtId: true,
           district: { select: { id: true, name: true } },
         },
       },
       roles: {
         select: {
-          id: true, role: true, scopeType: true,
-          scopeId: true, assignedAt: true,
+          id: true,
+          role: true,
+          scopeType: true,
+          scopeId: true,
+          assignedAt: true,
           assignedBy: { select: { id: true, fullName: true } },
         },
         orderBy: { assignedAt: 'asc' as const },
       },
       permissions: {
         select: {
-          id: true, permission: true, grantedAt: true,
-          expiresAt: true, note: true,
+          id: true,
+          permission: true,
+          grantedAt: true,
+          expiresAt: true,
+          note: true,
           grantedBy: { select: { id: true, fullName: true } },
         },
         orderBy: { grantedAt: 'asc' as const },
@@ -157,7 +173,11 @@ export class UsersService {
   }
 
   // ── CREATE USER ──────────────────────────────────────────────────────
-  async createUser(activeRole: JwtRoleClaim, createdById: string, dto: CreateUserDto) {
+  async createUser(
+    activeRole: JwtRoleClaim,
+    createdById: string,
+    dto: CreateUserDto,
+  ) {
     this.assertCanManageScope(activeRole, dto.scopeType, dto.scopeId);
     this.assertCanAssignRole(activeRole, dto.role);
 
@@ -171,7 +191,9 @@ export class UsersService {
     });
     if (existing) {
       throw new ConflictException(
-        existing.username === dto.username ? 'Username already taken' : 'Email already in use',
+        existing.username === dto.username
+          ? 'Username already taken'
+          : 'Email already in use',
       );
     }
 
@@ -189,18 +211,20 @@ export class UsersService {
         institutionId: dto.institutionId ?? null,
         mustChangePassword: dto.mustChangePassword ?? true,
         roles: {
-          create: [{
-            id: randomUUID(),
-            role: dto.role,
-            scopeType: dto.scopeType,
-            scopeId: dto.scopeId ?? null,
-            assignedById: createdById,
-          }],
+          create: [
+            {
+              id: randomUUID(),
+              role: dto.role,
+              scopeType: dto.scopeType,
+              scopeId: dto.scopeId ?? null,
+              assignedById: createdById,
+            },
+          ],
         },
         permissions: {
           create: defaultPermissions.map((p) => ({
             id: randomUUID(),
-            permission: p as string,
+            permission: p,
             grantedById: createdById,
           })),
         },
@@ -212,7 +236,11 @@ export class UsersService {
   }
 
   // ── UPDATE USER ──────────────────────────────────────────────────────
-  async updateUser(activeRole: JwtRoleClaim, userId: string, dto: UpdateUserDto) {
+  async updateUser(
+    activeRole: JwtRoleClaim,
+    userId: string,
+    dto: UpdateUserDto,
+  ) {
     await this.assertUserInScope(activeRole, userId);
 
     const user = await this.prisma.user.update({
@@ -220,8 +248,12 @@ export class UsersService {
       data: {
         ...(dto.fullName && { fullName: dto.fullName }),
         ...(dto.email !== undefined && { email: dto.email || null }),
-        ...(dto.institutionId !== undefined && { institutionId: dto.institutionId || null }),
-        ...(dto.mustChangePassword !== undefined && { mustChangePassword: dto.mustChangePassword }),
+        ...(dto.institutionId !== undefined && {
+          institutionId: dto.institutionId || null,
+        }),
+        ...(dto.mustChangePassword !== undefined && {
+          mustChangePassword: dto.mustChangePassword,
+        }),
       },
       select: this.userSelect,
     });
@@ -294,7 +326,7 @@ export class UsersService {
           data: {
             id: randomUUID(),
             userId,
-            permission: p as string,
+            permission: p,
             grantedById: assignedById,
           },
         }),
@@ -331,7 +363,10 @@ export class UsersService {
       include: { grantedBy: { select: { id: true, fullName: true } } },
       orderBy: { grantedAt: 'asc' },
     });
-    return all.map((p) => ({ ...p, active: !p.expiresAt || p.expiresAt > now }));
+    return all.map((p) => ({
+      ...p,
+      active: !p.expiresAt || p.expiresAt > now,
+    }));
   }
 
   async grantPermission(
@@ -413,7 +448,11 @@ export class UsersService {
         return {
           OR: [
             { institution: { districtId: activeRole.scopeId } },
-            { roles: { some: { scopeType: 'RDHS', scopeId: activeRole.scopeId } } },
+            {
+              roles: {
+                some: { scopeType: 'RDHS', scopeId: activeRole.scopeId },
+              },
+            },
           ],
         };
       case 'INSTITUTE':
@@ -442,24 +481,38 @@ export class UsersService {
         return;
       case 'RDHS':
         if (targetScopeType === 'PDHS') {
-          throw new ForbiddenException('RDHS-scoped users cannot create PDHS-level users');
+          throw new ForbiddenException(
+            'RDHS-scoped users cannot create PDHS-level users',
+          );
         }
-        if (targetScopeType === 'RDHS' && targetScopeId !== activeRole.scopeId) {
-          throw new ForbiddenException('RDHS-scoped users can only manage users in their own district');
+        if (
+          targetScopeType === 'RDHS' &&
+          targetScopeId !== activeRole.scopeId
+        ) {
+          throw new ForbiddenException(
+            'RDHS-scoped users can only manage users in their own district',
+          );
         }
         return;
       case 'INSTITUTE':
         if (targetScopeType !== 'INSTITUTE') {
-          throw new ForbiddenException('Institute-scoped users can only manage users within their institution');
+          throw new ForbiddenException(
+            'Institute-scoped users can only manage users within their institution',
+          );
         }
         if (targetScopeId !== activeRole.scopeId) {
-          throw new ForbiddenException('Institute-scoped users can only manage users in their own institution');
+          throw new ForbiddenException(
+            'Institute-scoped users can only manage users in their own institution',
+          );
         }
         return;
     }
   }
 
-  private assertCanAssignRole(activeRole: JwtRoleClaim, roleToAssign: RoleType) {
+  private assertCanAssignRole(
+    activeRole: JwtRoleClaim,
+    roleToAssign: RoleType,
+  ) {
     if (activeRole.scopeType === 'PDHS') return;
     const allowedRoles = SCOPE_ROLES[activeRole.scopeType as ScopeType] ?? [];
     if (!allowedRoles.includes(roleToAssign)) {
@@ -469,7 +522,10 @@ export class UsersService {
     }
   }
 
-  private assertCanGrantPermission(activeRole: JwtRoleClaim, permission: Permission) {
+  private assertCanGrantPermission(
+    activeRole: JwtRoleClaim,
+    permission: Permission,
+  ) {
     if (activeRole.role === 'SUPER_ADMIN_PDHS') return;
     const callerPerms = ROLE_PERMISSIONS[activeRole.role as RoleType] ?? [];
     if (!callerPerms.includes(permission)) {

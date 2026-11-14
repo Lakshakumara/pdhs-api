@@ -18,7 +18,7 @@ export interface JwtRoleClaim {
 }
 
 export interface JwtPayload {
-  sub: string;            // userId
+  sub: string; // userId
   username: string;
   fullName: string;
   institutionId: string | null;

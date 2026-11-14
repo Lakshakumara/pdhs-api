@@ -162,6 +162,71 @@ export const PERMISSIONS = {
     icon: 'pi-clipboard',
     action: 'verify',
   },
+  REPAIR_FEEDBACK: {
+    group: 'Work Orders',
+    label: 'Repair Review Feedback',
+    description: 'End user submits repair review (OK / not OK)',
+    icon: 'pi-clipboard',
+    action: 'feedback',
+  },
+  REPAIR_PAYMENT: {
+    group: 'Work Orders',
+    label: 'Repair Payment',
+    description: 'Record payment comment after successful repair review',
+    icon: 'pi-clipboard',
+    action: 'payment',
+  },
+  REPAIR_APPROVE_MS: {
+    group: 'Work Orders',
+    label: 'MS Approval',
+    description: 'Medical Superintendent approves the repair',
+    icon: 'pi-clipboard',
+    action: 'approve',
+  },
+  REPAIR_APPROVE_RDHS: {
+    group: 'Work Orders',
+    label: 'RDHS Approval',
+    description: 'Regional Director of Health Services approves the repair',
+    icon: 'pi-clipboard',
+    action: 'approve',
+  },
+  REPAIR_APPROVE_PDHS: {
+    group: 'Work Orders',
+    label: 'PDHD Approval',
+    description: 'Provincial Director of Health Services approves and closes the repair',
+    icon: 'pi-clipboard',
+    action: 'approve',
+  },
+
+  // Supplier
+  SUPPLIER_VIEW: {
+    group: 'Supplier',
+    label: 'View Supplier',
+    description: 'Can view Supplier list and details',
+    icon: 'pi-cart',
+    action: 'view',
+  },
+  SUPPLIER_CREATE: {
+    group: 'Supplier',
+    label: 'Create Supplier',
+    description: 'Can create new Supplier',
+    icon: 'pi-cart',
+    action: 'create',
+  },
+  SUPPLIER_UPDATE: {
+    group: 'Supplier',
+    label: 'Update Supplier',
+    description: 'Can update Supplier info',
+    icon: 'pi-cart',
+    action: 'update',
+  },
+  SUPPLIER_DELETE: {
+    group: 'Supplier',
+    label: 'Delete Supplier',
+    description: 'Can delete / deactivate Supplier',
+    icon: 'pi-cart',
+    action: 'delete',
+  },
 
   // Procurement
   PROCUREMENT_VIEW: {
@@ -266,7 +331,11 @@ export const PERMISSION_GROUPS = Object.values(PERMISSIONS).reduce(
     const groupName = curr.group;
     let g = acc.find((x) => x.group === groupName);
     if (!g) {
-      g = { group: groupName, icon: curr.icon, permissions: [] as Permission[] };
+      g = {
+        group: groupName,
+        icon: curr.icon,
+        permissions: [] as Permission[],
+      };
       acc.push(g);
     }
     g.permissions.push(key);

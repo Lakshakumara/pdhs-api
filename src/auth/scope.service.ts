@@ -1,9 +1,7 @@
-
 import { Injectable, ForbiddenException } from '@nestjs/common';
 
 @Injectable()
 export class ScopeService {
-
   instituteWhere(activeRole: any) {
     switch (activeRole.scopeType) {
       case 'PDHS':
@@ -11,14 +9,12 @@ export class ScopeService {
 
       case 'RDHS':
         return {
-          districtId:
-            activeRole.scopeId
+          districtId: activeRole.scopeId,
         };
 
       case 'INSTITUTE':
         return {
-          id:
-            activeRole.scopeId
+          id: activeRole.scopeId,
         };
     }
   }
@@ -30,22 +26,17 @@ export class ScopeService {
       case 'RDHS':
         return {
           institution: {
-            districtId:
-              activeRole.scopeId
-          }
+            districtId: activeRole.scopeId,
+          },
         };
 
       case 'INSTITUTE':
         return {
-          institutionId:
-            activeRole.scopeId
+          institutionId: activeRole.scopeId,
         };
 
       default:
-
-        throw new ForbiddenException(
-          'Invalid scope'
-        );
+        throw new ForbiddenException('Invalid scope');
     }
   }
 
@@ -57,41 +48,32 @@ export class ScopeService {
       case 'RDHS':
         return {
           assignedInstitution: {
-            districtId:
-              activeRole.scopeId
-          }
+            districtId: activeRole.scopeId,
+          },
         };
 
       case 'INSTITUTE':
         return {
-          assignedInstitutionId:
-            activeRole.scopeId
+          assignedInstitutionId: activeRole.scopeId,
         };
     }
   }
 
   scopeWhere(activeRole: any) {
-
     switch (activeRole.scopeType) {
-
       case 'PDHS':
-
         return {};
 
       case 'RDHS':
-
         return {
           institution: {
-            districtId:
-              activeRole.scopeId
-          }
+            districtId: activeRole.scopeId,
+          },
         };
 
       case 'INSTITUTE':
-
         return {
-          institutionId:
-            activeRole.scopeId
+          institutionId: activeRole.scopeId,
         };
     }
   }

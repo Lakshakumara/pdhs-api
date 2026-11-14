@@ -39,7 +39,9 @@ export class AuthService {
       include: {
         roles: true,
         institution: { include: { district: true } },
-        permissions: { include:{ grantedBy:{ select: { id: true, fullName:true } }}},
+        permissions: {
+          include: { grantedBy: { select: { id: true, fullName: true } } },
+        },
       },
     });
 
@@ -184,7 +186,9 @@ export class AuthService {
     });
 
     const plaintextToken = generateOpaqueToken(32);
-    const expiresAt = new Date(Date.now() + PASSWORD_RESET_TTL_HOURS * 60 * 60 * 1000);
+    const expiresAt = new Date(
+      Date.now() + PASSWORD_RESET_TTL_HOURS * 60 * 60 * 1000,
+    );
 
     await this.prisma.passwordResetToken.create({
       data: {
@@ -197,7 +201,9 @@ export class AuthService {
 
     // TODO: wire up MailService and email `plaintextToken` to user.email
     // as a reset link, e.g. https://app/reset-password?token=<plaintextToken>
-    console.log(`[DEV] Password reset token for ${user.email}: ${plaintextToken}`);
+    console.log(
+      `[DEV] Password reset token for ${user.email}: ${plaintextToken}`,
+    );
   }
 
   async resetPassword(token: string, newPassword: string): Promise<void> {
@@ -238,8 +244,14 @@ export class AuthService {
    * Signs an access token containing role/scope claims (but NOT
    * permissions — see permissions.ts for rationale).
    */
-  private signAccessToken(user: { id: string; username: string; fullName: string; institutionId: string | null; roles: { role: any; scopeType: any; scopeId: string | null }[] }): string {
-    const roleClaims: JwtRoleClaim[] = user.roles.map(r => ({
+  private signAccessToken(user: {
+    id: string;
+    username: string;
+    fullName: string;
+    institutionId: string | null;
+    roles: { role: any; scopeType: any; scopeId: string | null }[];
+  }): string {
+    const roleClaims: JwtRoleClaim[] = user.roles.map((r) => ({
       role: r.role,
       scopeType: r.scopeType,
       scopeId: r.scopeId,
@@ -254,7 +266,10 @@ export class AuthService {
     };
 
     return this.jwtService.sign(payload, {
-      secret: this.configService.get<string>('JWT_SECRET', 'soft_solution_software_@_laksha_@_1227'),
+      secret: this.configService.get<string>(
+        'JWT_SECRET',
+        'soft_solution_software_@_laksha_@_1227',
+      ),
       // See auth.module.ts for why this cast is needed — JwtSignOptions
       // types expiresIn as `number | StringValue`, narrower than the
       // plain `string` ConfigService.get() returns.
@@ -266,9 +281,14 @@ export class AuthService {
    * Creates and persists a refresh token, returning the PLAINTEXT value
    * to send to the client. Only its SHA-256 hash is stored.
    */
-  private async issueRefreshToken(userId: string, meta: RequestMeta): Promise<string> {
+  private async issueRefreshToken(
+    userId: string,
+    meta: RequestMeta,
+  ): Promise<string> {
     const plaintextToken = generateOpaqueToken(40);
-    const expiresAt = new Date(Date.now() + REFRESH_TOKEN_TTL_DAYS * 24 * 60 * 60 * 1000);
+    const expiresAt = new Date(
+      Date.now() + REFRESH_TOKEN_TTL_DAYS * 24 * 60 * 60 * 1000,
+    );
 
     await this.prisma.refreshToken.create({
       data: {
@@ -316,12 +336,12 @@ export class AuthService {
         assignedAt: role.assignedAt,
         assignedById: role.assignedById,
       })),
-      permissions:user.permissions.map((per:any)=>({
-        permission:per.permission,
-        grantedAt:per.grantedAt,
-        note:per.note,
+      permissions: user.permissions.map((per: any) => ({
+        permission: per.permission,
+        grantedAt: per.grantedAt,
+        note: per.note,
         expiresAt: per.expiresAt,
-        grantedBy:per.grantedBy,
+        grantedBy: per.grantedBy,
       })),
     };
   }

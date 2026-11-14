@@ -1,5 +1,14 @@
 // institutions.controller.ts
-import { Controller, Get, Post, Put, Body, Param, Query, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Put,
+  Body,
+  Param,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import { Permission } from 'src/auth/permission.enum';
 import { ActiveRole } from 'src/common/decorators/active-role.decorator';
 import { RequirePermission } from 'src/common/decorators/require-permission.decorator';
@@ -12,17 +21,17 @@ import type { JwtRoleClaim } from '../../auth/jwt-payload.interface';
 @UseGuards(JwtAuthGuard, ActiveRoleGuard, PermissionGuard)
 @Controller('api/institutions')
 export class InstituteController {
-    constructor(private readonly service: InstituteService) { }
+  constructor(private readonly service: InstituteService) {}
 
-    @Get()
-    @RequirePermission(Permission.INSTITUTE_VIEW)
-    getInstitutions(
-        @ActiveRole() activeRole: JwtRoleClaim,
-        @Query() query: QueryInstituteDto,
-    ) {
-        return this.service.findInstitutions(activeRole, query);
-    }
-/*
+  @Get()
+  @RequirePermission(Permission.INSTITUTE_VIEW)
+  getInstitutions(
+    @ActiveRole() activeRole: JwtRoleClaim,
+    @Query() query: QueryInstituteDto,
+  ) {
+    return this.service.findInstitutions(activeRole, query);
+  }
+  /*
     @Post()
     async create(@Body() data: any) {
         return this.prisma.institution.create({

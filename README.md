@@ -100,6 +100,26 @@ src/
   and `scopeService.xxxWhere(activeRole)` — unchanged from your existing
   pattern.
 
+# installation DB 
+```
+psql -U postgres
+CREATE DATABASE biomedical;
+\c biomedical
+CREATE SCHEMA IF NOT EXISTS pdhs AUTHORIZATION biomedical_user;
+GRANT CONNECT ON DATABASE biomedical TO biomedical_user;
+GRANT USAGE ON SCHEMA pdhs TO biomedical_user;
+GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA pdhs TO biomedical_user;
+GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA pdhs TO biomedical_user;
+ALTER DEFAULT PRIVILEGES IN SCHEMA pdhs GRANT ALL PRIVILEGES ON TABLES TO biomedical_user;
+ALTER DEFAULT PRIVILEGES IN SCHEMA pdhs GRANT ALL PRIVILEGES ON SEQUENCES TO biomedical_user;
+ALTER ROLE biomedical_user SET search_path TO pdhs;
+```
+```
+cd E:\root\pdhs-api
+npx prisma migrate deploy
+```
+
+
 # installation and Run
 ## pm2
 1. Run it persistently — don't just npm run start:prod

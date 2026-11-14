@@ -19,7 +19,10 @@ import { ScopeService } from './scope.service';
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (config: ConfigService): JwtModuleOptions => ({
-        secret: config.get<string>('JWT_SECRET', 'soft_solution_software_@_laksha_@_1227'),
+        secret: config.get<string>(
+          'JWT_SECRET',
+          'soft_solution_software_@_laksha_@_1227',
+        ),
         signOptions: {
           expiresIn: config.get<string>('JWT_EXPIRES_IN', '8h') as any,
         },

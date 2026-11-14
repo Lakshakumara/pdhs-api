@@ -1,4 +1,13 @@
-import { Body, Controller, Get, Param, Post, Put, Query, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Post,
+  Put,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import { JwtAuthGuard, ActiveRoleGuard } from '../../common/guards/auth.guard';
 import { PermissionGuard } from '../../common/guards/permission.guard';
 import { ActiveRole } from '../../common/decorators/active-role.decorator';
@@ -6,7 +15,11 @@ import { RequirePermission } from '../../common/decorators/require-permission.de
 import { Permission } from '../../auth/permission.enum';
 import type { JwtRoleClaim } from '../../auth/jwt-payload.interface';
 import { EquipmentService } from './equipment.service';
-import { CreateEquipmentDto, QueryEquipmentDto, UpdateEquipmentDto } from './dto/equipment.dto';
+import {
+  CreateEquipmentDto,
+  QueryEquipmentDto,
+  UpdateEquipmentDto,
+} from './dto/equipment.dto';
 
 @UseGuards(JwtAuthGuard, ActiveRoleGuard, PermissionGuard)
 @Controller('api/equipment')
@@ -50,7 +63,12 @@ export class EquipmentController {
   assignEquipment(
     @Param('id') equipmentId: string,
     @ActiveRole() activeRole: JwtRoleClaim,
-    @Body() body: { toInstitutionId: string; toEntity: 'RDHS' | 'Institution'; quantity: number },
+    @Body()
+    body: {
+      toInstitutionId: string;
+      toEntity: 'RDHS' | 'Institution';
+      quantity: number;
+    },
   ) {
     return this.service.assignEquipment(
       activeRole,

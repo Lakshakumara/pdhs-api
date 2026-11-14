@@ -19,7 +19,10 @@ import {
 } from './auth.dto';
 import { JwtAuthGuard } from '../common/guards/auth.guard';
 import type { JwtPayload } from './jwt-payload.interface';
-  import { PERMISSION_GROUPS, PERMISSIONS } from './constants/permission.registry';
+import {
+  PERMISSION_GROUPS,
+  PERMISSIONS,
+} from './constants/permission.registry';
 import { Permission } from './permission.enum';
 import { SkipPermission } from 'src/common/decorators/skip-permission.decorator';
 
@@ -27,15 +30,14 @@ import { SkipPermission } from 'src/common/decorators/skip-permission.decorator'
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
-
-@Get('permissions/meta')
-@SkipPermission()
-getPermissionMeta() {
-  return {
-    groups: PERMISSION_GROUPS,
-    definitions: PERMISSIONS,
-  };
-}
+  @Get('permissions/meta')
+  @SkipPermission()
+  getPermissionMeta() {
+    return {
+      groups: PERMISSION_GROUPS,
+      definitions: PERMISSIONS,
+    };
+  }
   // ───────────────────────────────────────────────────────────────────
   // POST /api/auth/login
   // Body: { username, password }
@@ -123,7 +125,9 @@ getPermissionMeta() {
   @HttpCode(HttpStatus.OK)
   async forgotPassword(@Body() dto: ForgotPasswordDto) {
     await this.authService.forgotPassword(dto.email);
-    return { message: 'If that email exists, a password reset link has been sent.' };
+    return {
+      message: 'If that email exists, a password reset link has been sent.',
+    };
   }
 
   // ───────────────────────────────────────────────────────────────────

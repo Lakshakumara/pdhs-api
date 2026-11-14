@@ -9,12 +9,20 @@ import * as express from 'express';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
-  app.enableCors({ origin: ['http://localhost:4200', 'http://localhost:3000', 'http://10.20.16.17:3000'],
-     credentials: true });
-  app.useGlobalPipes(new ValidationPipe({
-    transform: true,
-    whitelist: true,
-  }));
+  app.enableCors({
+    origin: [
+      'http://localhost:4200',
+      'http://localhost:3000',
+      'http://10.20.16.17:3000',
+    ],
+    credentials: true,
+  });
+  app.useGlobalPipes(
+    new ValidationPipe({
+      transform: true,
+      whitelist: true,
+    }),
+  );
 
   const clientPath = join(__dirname, '..', '..', 'client');
   app.use(express.static(clientPath));

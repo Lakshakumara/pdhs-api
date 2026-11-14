@@ -15,7 +15,8 @@ export class CreateUserDto {
   @IsString()
   @MinLength(3)
   @Matches(/^[a-z0-9._-]+$/, {
-    message: 'Username may only contain lowercase letters, numbers, dots, hyphens, underscores',
+    message:
+      'Username may only contain lowercase letters, numbers, dots, hyphens, underscores',
   })
   username!: string;
 
@@ -36,10 +37,10 @@ export class CreateUserDto {
   institutionId?: string;
 
   @IsOptional()
-   @Transform(({value}) => {
-    if(value === 'true') return true
-    if(value === 'false') return false
-    return value
+  @Transform(({ value }) => {
+    if (value === 'true') return true;
+    if (value === 'false') return false;
+    return value;
   })
   @IsBoolean()
   mustChangePassword?: boolean;
@@ -93,10 +94,10 @@ export class QueryUsersDto {
 
   @IsOptional()
   @IsBoolean()
-  @Transform(({value}) => {
-    if(value === 'true') return true
-    if(value === 'false') return false
-    return value
+  @Transform(({ value }) => {
+    if (value === 'true') return true;
+    if (value === 'false') return false;
+    return value;
   })
   active?: boolean;
 
