@@ -6,6 +6,7 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common/pipes/validation.pipe';
 import * as express from 'express';
+import type { NextFunction, Request, Response } from 'express';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -31,7 +32,7 @@ async function bootstrap() {
   app.use(express.static(clientPath));
   console.log('client Path ', clientPath);
 
-  app.use((req: any, res: any, next: any) => {
+  app.use((req: Request, res: Response, next: NextFunction) => {
     if (!req.path.startsWith('/api')) {
       res.sendFile(join(clientPath, 'index.html'));
     } else {
@@ -41,4 +42,4 @@ async function bootstrap() {
 
   await app.listen(process.env.PORT ?? 3000);
 }
-bootstrap();
+void bootstrap();
