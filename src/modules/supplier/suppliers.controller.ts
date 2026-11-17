@@ -1,5 +1,6 @@
 import {
   Body,
+  Req,
   Controller,
   Delete,
   Get,
@@ -9,6 +10,7 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
+import type { Request } from 'express';
 import type { JwtRoleClaim } from 'src/auth/jwt-payload.interface';
 import { Permission } from 'src/auth/permission.enum';
 import { ActiveRole } from 'src/common/decorators/active-role.decorator';
@@ -21,6 +23,7 @@ import {
   UpdateSupplierDto,
 } from './dto/supplier.dto';
 import { SupplierService } from './supplier.service';
+import { buildAuditContext } from 'src/common/utils/audit-context.util';
 
 @UseGuards(JwtAuthGuard, ActiveRoleGuard, PermissionGuard)
 @Controller('api/supplier')
@@ -53,8 +56,8 @@ export class SuppliersController {
     Permission.SUPPLIER_CREATE,
     Permission.PROCUREMENT_CREATE,
   ])
-  createSupplier(@Body() dto: CreateSupplierDto) {
-    return this.service.createSupplier(dto);
+  createSupplier(@Body() dto: CreateSupplierDto, @Req() req: Request) {
+    return this.service.createSupplier(dto, buildAuditContext(req));
   }
 
   @Post('add')
@@ -62,8 +65,8 @@ export class SuppliersController {
     Permission.SUPPLIER_CREATE,
     Permission.PROCUREMENT_CREATE,
   ])
-  createSupplierAlias(@Body() dto: CreateSupplierDto) {
-    return this.service.createSupplier(dto);
+  createSupplierAlias(@Body() dto: CreateSupplierDto, @Req() req: Request) {
+    return this.service.createSupplier(dto, buildAuditContext(req));
   }
 
   @Put(':id')
@@ -71,8 +74,11 @@ export class SuppliersController {
     Permission.SUPPLIER_UPDATE,
     Permission.PROCUREMENT_CREATE,
   ])
-  updateSupplier(@Param('id') id: string, @Body() dto: UpdateSupplierDto) {
-    return this.service.updateSupplier(id, dto);
+  updateSupplier(
+    @Param('id') id: string,
+    @Body() dto: UpdateSupplierDto,
+    @Req() req: Request,  ) {
+    return this.service.updateSupplier(id, dto, buildAuditContext(req));
   }
 
   @Put(':id/edit')
@@ -80,13 +86,16 @@ export class SuppliersController {
     Permission.SUPPLIER_UPDATE,
     Permission.PROCUREMENT_CREATE,
   ])
-  updateSupplierAlias(@Param('id') id: string, @Body() dto: UpdateSupplierDto) {
-    return this.service.updateSupplier(id, dto);
+  updateSupplierAlias(
+    @Param('id') id: string,
+    @Body() dto: UpdateSupplierDto,
+    @Req() req: Request,  ) {
+    return this.service.updateSupplier(id, dto, buildAuditContext(req));
   }
 
   @Delete(':id')
   @RequirePermission(() => [Permission.SUPPLIER_DELETE])
-  deleteSupplier(@Param('id') id: string) {
-    return this.service.deleteSupplier(id);
+  deleteSupplier(@Param('id') id: string, @Req() req: Request) {
+    return this.service.deleteSupplier(id, buildAuditContext(req));
   }
 }

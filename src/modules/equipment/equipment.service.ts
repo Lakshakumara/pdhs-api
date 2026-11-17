@@ -9,6 +9,8 @@ import {
   QueryEquipmentDto,
   UpdateEquipmentDto,
 } from './dto/equipment.dto';
+import { AuditContext } from '../../common/utils/audit-context.util';
+import { AuditService } from '../audit/audit.service';
 
 @Injectable()
 export class EquipmentService {
@@ -17,6 +19,7 @@ export class EquipmentService {
     private readonly scopeService: ScopeService,
     private readonly queryBuilder: PrismaQueryBuilder,
     private readonly idService: IdService,
+    private readonly auditService: AuditService,
   ) {}
 
   // ── QUERY ─────────────────────────────────────────────────────────
@@ -27,7 +30,7 @@ export class EquipmentService {
       query,
       scopeWhere,
       ['name', 'serialNumber', 'modelNumber'],
-      ['category', 'status', 'assignedInstitutionId'],
+      ['category', 'status', 'assignedInstitutionId', 'supplierId'],
     );
 
     const [items, total] = await this.prisma.$transaction([
@@ -39,6 +42,18 @@ export class EquipmentService {
           assignedInstitution: true,
           spareParts: true,
           servicePlan: true,
+          supplier: {
+            select: {
+              id: true,
+              name: true,
+              phone: true,
+              email: true,
+              contactPhone: true,
+              contactEmail: true,
+              rating: true,
+              contactPerson: true,
+            },
+          },
         },
         orderBy: { name: 'asc' },
       }),
@@ -54,20 +69,60 @@ export class EquipmentService {
   }
 
   // ── CREATE ────────────────────────────────────────────────────────
-  async addEquipment(activeRole: JwtRoleClaim, data: CreateEquipmentDto) {
-    const { spareParts, servicePlan, assignedInstitutionId, ...equipmentData } =
-      data;
+  async addEquipment(
+    activeRole: JwtRoleClaim,
+    data: CreateEquipmentDto,
+    ctx?: AuditContext,
+  ) {
+    const {
+      spareParts,
+      servicePlan,
+      assignedInstitutionId,
+      supplierId,
+      ...equipmentData
+    } = data;
 
-    return this.prisma.equipment.create({
+    let resolvedSupplierName = equipmentData.supplierName;
+    if (supplierId && !resolvedSupplierName) {
+      const sup = await this.prisma.supplier.findUnique({
+        where: { id: supplierId },
+        select: { name: true },
+      });
+      if (sup) resolvedSupplierName = sup.name;
+    }
+
+    const equipment = await this.prisma.equipment.create({
       data: {
         ...equipmentData,
+        supplierName: resolvedSupplierName,
         assignedInstitution: assignedInstitutionId
           ? { connect: { id: assignedInstitutionId } }
+          : undefined,
+        supplier: supplierId
+          ? { connect: { id: supplierId } }
           : undefined,
         spareParts: spareParts?.length ? { create: spareParts } : undefined,
         servicePlan: servicePlan ? { create: servicePlan } : undefined,
       },
+      include: {
+        assignedInstitution: true,
+        supplier: true,
+        spareParts: true,
+        servicePlan: true,
+      },
     });
+
+    if (ctx) {
+      await this.auditService.log(ctx, {
+        action: 'CREATE',
+        entityName: 'Equipment',
+        recordId: equipment.id,
+        description: `Created equipment "${equipment.name}" (${equipment.serialNumber ?? 'no serial'})`,
+        institutionId: equipment.assignedInstitutionId ?? undefined,
+      });
+    }
+
+    return equipment;
   }
 
   // ── UPDATE ────────────────────────────────────────────────────────
@@ -75,17 +130,44 @@ export class EquipmentService {
     activeRole: JwtRoleClaim,
     id: string,
     data: UpdateEquipmentDto,
+    ctx?: AuditContext,
   ) {
-    const { spareParts, servicePlan, assignedInstitutionId, ...equipmentData } =
-      data;
-console.log('update data ', data)
-    return this.prisma.equipment.update({
+    const {
+      spareParts,
+      servicePlan,
+      assignedInstitutionId,
+      supplierId,
+      ...equipmentData
+    } = data;
+
+    let resolvedSupplierName = equipmentData.supplierName;
+    if (supplierId && !resolvedSupplierName) {
+      const sup = await this.prisma.supplier.findUnique({
+        where: { id: supplierId },
+        select: { name: true },
+      });
+      if (sup) resolvedSupplierName = sup.name;
+    }
+
+    const updated = await this.prisma.equipment.update({
       where: { id },
       data: {
         ...equipmentData,
-        assignedInstitution: assignedInstitutionId
-          ? { connect: { id: assignedInstitutionId } }
-          : { disconnect: true },
+        ...(resolvedSupplierName !== undefined
+          ? { supplierName: resolvedSupplierName }
+          : {}),
+        assignedInstitution:
+          assignedInstitutionId !== undefined
+            ? assignedInstitutionId
+              ? { connect: { id: assignedInstitutionId } }
+              : { disconnect: true }
+            : undefined,
+        supplier:
+          supplierId !== undefined
+            ? supplierId
+              ? { connect: { id: supplierId } }
+              : { disconnect: true }
+            : undefined,
         spareParts: spareParts
           ? { deleteMany: {}, create: spareParts }
           : undefined,
@@ -93,7 +175,25 @@ console.log('update data ', data)
           ? { upsert: { create: servicePlan, update: servicePlan } }
           : undefined,
       },
+      include: {
+        assignedInstitution: true,
+        supplier: true,
+        spareParts: true,
+        servicePlan: true,
+      },
     });
+
+    if (ctx) {
+      await this.auditService.log(ctx, {
+        action: 'UPDATE',
+        entityName: 'Equipment',
+        recordId: updated.id,
+        description: `Updated equipment "${updated.name}"`,
+        institutionId: updated.assignedInstitutionId ?? undefined,
+      });
+    }
+
+    return updated;
   }
 
   // ── ASSIGN ────────────────────────────────────────────────────────
@@ -103,6 +203,7 @@ console.log('update data ', data)
     toInstitutionId: string,
     toEntity: 'RDHS' | 'Institution',
     quantity: number,
+    ctx?: AuditContext,
   ) {
     const equipment = await this.prisma.equipment.findUnique({
       where: { id: equipmentId },
@@ -138,6 +239,23 @@ console.log('update data ', data)
         assignedInstitutionId: toInstitutionId,
       },
     });
+
+    if (ctx) {
+      await this.auditService.log(ctx, {
+        action: 'ASSIGN',
+        entityName: 'Equipment',
+        recordId: equipmentId,
+        description: `Assigned ${quantity} × "${equipment.name}" to ${toEntity} (${institution.name})`,
+        institutionId: toInstitutionId,
+        metadata: {
+          fromEntity,
+          toEntity,
+          toEntityId: toInstitutionId,
+          quantity,
+          assignmentId,
+        },
+      });
+    }
 
     return assignment;
   }

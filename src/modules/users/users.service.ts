@@ -8,7 +8,7 @@ import {
 import { PrismaService } from '../../prisma/prisma.service';
 import { ScopeService } from '../../auth/scope.service';
 import { JwtRoleClaim } from '../../auth/jwt-payload.interface';
-import { ROLE_PERMISSIONS, SCOPE_ROLES } from '../../auth/role-permissions';
+import { ROLE_PERMISSIONS, SCOPE_ROLES } from '../../auth/constants/role-permissions';
 import { Permission } from '../../auth/permission.enum';
 import * as bcrypt from 'bcrypt';
 import { randomUUID } from 'crypto';
@@ -20,6 +20,8 @@ import {
   QueryUsersDto,
   UpdateUserDto,
 } from './dto/user.dto';
+import { AuditContext } from '../../common/utils/audit-context.util';
+import { AuditService } from '../audit/audit.service';
 
 const BCRYPT_ROUNDS = 12;
 const DEFAULT_PASSWORD = 'pdhs@123';
@@ -29,7 +31,8 @@ export class UsersService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly scopeService: ScopeService,
-  ) {}
+    private readonly auditService: AuditService,
+  ) { }
 
   // ── USER SELECT ──────────────────────────────────────────────────────
   private get userSelect() {
@@ -151,6 +154,7 @@ export class UsersService {
     activeRole: JwtRoleClaim,
     createdById: string,
     dto: CreateUserDto,
+    ctx?: AuditContext,
   ) {
     this.assertCanManageScope(activeRole, dto.scopeType, dto.scopeId);
     this.assertCanAssignRole(activeRole, dto.role);
@@ -206,6 +210,16 @@ export class UsersService {
       select: this.userSelect,
     });
 
+    if (ctx) {
+      await this.auditService.log(ctx, {
+        action: 'CREATE',
+        entityName: 'User',
+        recordId: user.id,
+        description: `Created user "${user.username}" with role ${dto.role}`,
+        metadata: { role: dto.role, scopeType: dto.scopeType },
+      });
+    }
+
     return this.mapUser(user);
   }
 
@@ -214,6 +228,7 @@ export class UsersService {
     activeRole: JwtRoleClaim,
     userId: string,
     dto: UpdateUserDto,
+    ctx?: AuditContext,
   ) {
     await this.assertUserInScope(activeRole, userId);
 
@@ -231,34 +246,92 @@ export class UsersService {
       },
       select: this.userSelect,
     });
+
+    if (ctx) {
+      await this.auditService.log(ctx, {
+        action: 'UPDATE',
+        entityName: 'User',
+        recordId: user.id,
+        description: `Updated user "${user.username}"`,
+        metadata: { changes: dto as Record<string, unknown> },
+      });
+    }
+
     return this.mapUser(user);
   }
 
   // ── DELETE USER ──────────────────────────────────────────────────────
-  async deleteUser(activeRole: JwtRoleClaim, userId: string) {
+  async deleteUser(
+    activeRole: JwtRoleClaim,
+    userId: string,
+    ctx?: AuditContext,
+  ) {
     await this.assertUserInScope(activeRole, userId);
+    const victim = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { username: true, fullName: true },
+    });
     await this.prisma.user.delete({ where: { id: userId } });
+
+    if (ctx && victim) {
+      await this.auditService.log(ctx, {
+        action: 'DELETE',
+        entityName: 'User',
+        recordId: userId,
+        description: `Deleted user "${victim.username}"`,
+      });
+    }
   }
 
   // ── SET ACTIVE ───────────────────────────────────────────────────────
-  async setActive(activeRole: JwtRoleClaim, userId: string, active: boolean) {
+  async setActive(
+    activeRole: JwtRoleClaim,
+    userId: string,
+    active: boolean,
+    ctx?: AuditContext,
+  ) {
     await this.assertUserInScope(activeRole, userId);
     const user = await this.prisma.user.update({
       where: { id: userId },
       data: { active },
       select: this.userSelect,
     });
+
+    if (ctx) {
+      await this.auditService.log(ctx, {
+        action: 'UPDATE',
+        entityName: 'User',
+        recordId: user.id,
+        description: `${active ? 'Activated' : 'Deactivated'} user "${user.username}"`,
+        metadata: { active },
+      });
+    }
+
     return this.mapUser(user);
   }
 
   // ── RESET PASSWORD ───────────────────────────────────────────────────
-  async resetPassword(activeRole: JwtRoleClaim, userId: string) {
+  async resetPassword(
+    activeRole: JwtRoleClaim,
+    userId: string,
+    ctx?: AuditContext,
+  ) {
     await this.assertUserInScope(activeRole, userId);
     const passwordHash = await bcrypt.hash(DEFAULT_PASSWORD, BCRYPT_ROUNDS);
-    await this.prisma.user.update({
+    const user = await this.prisma.user.update({
       where: { id: userId },
       data: { passwordHash, mustChangePassword: true },
+      select: { username: true, fullName: true },
     });
+
+    if (ctx) {
+      await this.auditService.log(ctx, {
+        action: 'RESET_PASSWORD',
+        entityName: 'User',
+        recordId: userId,
+        description: `Reset password for user "${user.username}" (must change at next login)`,
+      });
+    }
   }
 
   // ══════════════════════════════════════════════════════════════════
@@ -270,6 +343,7 @@ export class UsersService {
     assignedById: string,
     userId: string,
     dto: AddRoleDto,
+    ctx?: AuditContext,
   ) {
     await this.assertUserInScope(activeRole, userId);
     this.assertCanManageScope(activeRole, dto.scopeType, dto.scopeId);
@@ -307,10 +381,25 @@ export class UsersService {
       ),
     ]);
 
+    if (ctx) {
+      await this.auditService.log(ctx, {
+        action: 'ASSIGN',
+        entityName: 'UserRole',
+        recordId: userId,
+        description: `Assigned role ${dto.role} (${dto.scopeType}) to user ${userId}`,
+        metadata: { role: dto.role, scopeType: dto.scopeType, newPerms },
+      });
+    }
+
     return role;
   }
 
-  async removeRole(activeRole: JwtRoleClaim, userId: string, roleId: string) {
+  async removeRole(
+    activeRole: JwtRoleClaim,
+    userId: string,
+    roleId: string,
+    ctx?: AuditContext,
+  ) {
     await this.assertUserInScope(activeRole, userId);
 
     const role = await this.prisma.userRole.findFirst({
@@ -324,6 +413,16 @@ export class UsersService {
     }
 
     await this.prisma.userRole.delete({ where: { id: roleId } });
+
+    if (ctx) {
+      await this.auditService.log(ctx, {
+        action: 'DELETE',
+        entityName: 'UserRole',
+        recordId: userId,
+        description: `Removed role ${role.role} from user ${userId}`,
+        metadata: { role: role.role, scopeType: role.scopeType },
+      });
+    }
   }
 
   // ══════════════════════════════════════════════════════════════════
@@ -348,13 +447,14 @@ export class UsersService {
     grantedById: string,
     userId: string,
     dto: GrantPermissionDto,
+    ctx?: AuditContext,
   ) {
     await this.assertUserInScope(activeRole, userId);
     await this.assertCanGrantPermissions(activeRole, [
       dto.permission as Permission,
     ]);
 
-    return this.prisma.userPermission.upsert({
+    const granted = await this.prisma.userPermission.upsert({
       where: { userId_permission: { userId, permission: dto.permission } },
       create: {
         id: randomUUID(),
@@ -372,12 +472,30 @@ export class UsersService {
       },
       include: { grantedBy: { select: { id: true, fullName: true } } },
     });
+
+    if (ctx) {
+      await this.auditService.log(ctx, {
+        action: 'ASSIGN',
+        entityName: 'UserPermission',
+        recordId: userId,
+        description: `Granted ${dto.permission} to user ${userId}${
+          dto.expiresAt ? ` (expires ${dto.expiresAt})` : ''
+        }`,
+        metadata: {
+          permission: dto.permission,
+          expiresAt: dto.expiresAt ?? null,
+        },
+      });
+    }
+
+    return granted;
   }
 
   async revokePermission(
     activeRole: JwtRoleClaim,
     userId: string,
     permissionId: string,
+    ctx?: AuditContext,
   ) {
     await this.assertUserInScope(activeRole, userId);
     const perm = await this.prisma.userPermission.findFirst({
@@ -385,6 +503,16 @@ export class UsersService {
     });
     if (!perm) throw new NotFoundException('Permission record not found');
     await this.prisma.userPermission.delete({ where: { id: permissionId } });
+
+    if (ctx) {
+      await this.auditService.log(ctx, {
+        action: 'DELETE',
+        entityName: 'UserPermission',
+        recordId: userId,
+        description: `Revoked ${perm.permission} from user ${userId}`,
+        metadata: { permission: perm.permission },
+      });
+    }
   }
 
   async syncPermissions(
@@ -392,6 +520,7 @@ export class UsersService {
     grantedById: string,
     userId: string,
     permissions: string[],
+    ctx?: AuditContext,
   ) {
     await this.assertUserInScope(activeRole, userId);
     await this.assertCanGrantPermissions(
@@ -409,6 +538,16 @@ export class UsersService {
         }),
       ),
     ]);
+
+    if (ctx) {
+      await this.auditService.log(ctx, {
+        action: 'UPDATE',
+        entityName: 'UserPermission',
+        recordId: userId,
+        description: `Synced ${permissions.length} permanent permission(s) for user ${userId}`,
+        metadata: { permissions },
+      });
+    }
 
     return this.getPermissions(userId);
   }
@@ -520,7 +659,7 @@ export class UsersService {
     if (missing.length > 0) {
       throw new ForbiddenException(
         `You cannot grant permission${missing.length > 1 ? 's' : ''} ` +
-          `${missing.join(', ')} — you do not hold ${missing.length > 1 ? 'them' : 'it'} yourself`,
+        `${missing.join(', ')} — you do not hold ${missing.length > 1 ? 'them' : 'it'} yourself`,
       );
     }
   }

@@ -169,32 +169,34 @@ export const PERMISSIONS = {
     icon: 'pi-clipboard',
     action: 'feedback',
   },
-  REPAIR_PAYMENT: {
-    group: 'Work Orders',
-    label: 'Repair Payment',
+
+  // Payment Process
+  PAYMENT_RECORD: {
+    group: 'Payment Process',
+    label: 'Record Repair Payment',
     description: 'Record payment comment after successful repair review',
-    icon: 'pi-clipboard',
+    icon: 'pi-credit-card',
     action: 'payment',
   },
-  REPAIR_APPROVE_MS: {
-    group: 'Work Orders',
-    label: 'MS Approval',
-    description: 'Medical Superintendent approves the repair',
-    icon: 'pi-clipboard',
+  PAYMENT_APPROVE_MS: {
+    group: 'Payment Process',
+    label: 'MS Payment Approval',
+    description: 'Medical Superintendent approves the repair payment',
+    icon: 'pi-check-circle',
     action: 'approve',
   },
-  REPAIR_APPROVE_RDHS: {
-    group: 'Work Orders',
-    label: 'RDHS Approval',
-    description: 'Regional Director of Health Services approves the repair',
-    icon: 'pi-clipboard',
+  PAYMENT_APPROVE_RDHS: {
+    group: 'Payment Process',
+    label: 'RDHS Payment Approval',
+    description: 'Regional Director of Health Services approves the repair payment',
+    icon: 'pi-check-circle',
     action: 'approve',
   },
-  REPAIR_APPROVE_PDHS: {
-    group: 'Work Orders',
-    label: 'PDHD Approval',
-    description: 'Provincial Director of Health Services approves and closes the repair',
-    icon: 'pi-clipboard',
+  PAYMENT_APPROVE_PDHS: {
+    group: 'Payment Process',
+    label: 'PDHS Payment Approval',
+    description: 'Provincial Director of Health Services approves and releases the repair payment',
+    icon: 'pi-check-circle',
     action: 'approve',
   },
 
@@ -318,6 +320,16 @@ export const PERMISSIONS = {
     description: 'View system audit trail',
     icon: 'pi-history',
     action: 'view',
+  },
+
+  // Authentication / developer-support tooling
+  AUTH_IMPERSONATE: {
+    group: 'Authentication',
+    label: 'Impersonate Users ("View As")',
+    description:
+      'Start a temporary audited session as another user for troubleshooting',
+    icon: 'pi-eye',
+    action: 'impersonate',
   },
 } as const;
 

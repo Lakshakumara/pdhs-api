@@ -9,7 +9,7 @@
 // src/app/core/models/permission.types.ts by `npm run gen:perms`.
 
 import { RoleType, ScopeType } from '@prisma/client';
-import { Permission } from './permission.enum';
+import { Permission } from '../permission.enum';
 
 // Roles allowed to be assigned at each scope level
 export const SCOPE_ROLES: Record<ScopeType, RoleType[]> = {
@@ -17,6 +17,7 @@ export const SCOPE_ROLES: Record<ScopeType, RoleType[]> = {
     RoleType.SUPER_ADMIN_PDHS,
     RoleType.ADMIN_PDHS,
     RoleType.VIEWER_PDHS,
+    RoleType.STORE_KEEPER,
     RoleType.BIOMEDICAL_TECHNICIAN,
     RoleType.PROCUREMENT_OFFICER,
   ],
@@ -24,16 +25,12 @@ export const SCOPE_ROLES: Record<ScopeType, RoleType[]> = {
     RoleType.SUPER_ADMIN_RDHS,
     RoleType.ADMIN_RDHS,
     RoleType.VIEWER_RDHS,
-    RoleType.STORE_KEEPER,
-    RoleType.BIOMEDICAL_TECHNICIAN,
   ],
   INSTITUTE: [
     RoleType.SUPER_ADMIN_INSTITUTE,
     RoleType.ADMIN_INSTITUTE,
     RoleType.VIEWER_INSTITUTE,
     RoleType.INSTITUTION_USER,
-    RoleType.STORE_KEEPER,
-    RoleType.BIOMEDICAL_TECHNICIAN,
   ],
 };
 
@@ -96,8 +93,9 @@ export const ROLE_PERMISSIONS: Record<RoleType, Permission[]> = {
     Permission.WORK_ORDER_COMPLETE,
     Permission.WORK_ORDER_ESCALATE_VENDOR,
     Permission.WORK_ORDER_VERIFY,
-    Permission.REPAIR_PAYMENT,
-    Permission.REPAIR_APPROVE_PDHS,
+    
+    Permission.PAYMENT_RECORD,
+    Permission.PAYMENT_APPROVE_PDHS,
 
     Permission.PROCUREMENT_VIEW,
     Permission.PROCUREMENT_CREATE,
@@ -106,6 +104,7 @@ export const ROLE_PERMISSIONS: Record<RoleType, Permission[]> = {
     Permission.USER_VIEW,
     Permission.USER_CREATE,
     Permission.USER_UPDATE,
+    Permission.USER_DELETE,
 
     Permission.PERMISSION_VIEW,
     Permission.PERMISSION_CREATE,
@@ -148,7 +147,7 @@ export const ROLE_PERMISSIONS: Record<RoleType, Permission[]> = {
 
     Permission.WORK_ORDER_VIEW,
 
-    Permission.REPAIR_APPROVE_RDHS,
+    Permission.PAYMENT_APPROVE_RDHS,
 
     Permission.PROCUREMENT_VIEW,
 
@@ -176,7 +175,7 @@ export const ROLE_PERMISSIONS: Record<RoleType, Permission[]> = {
     Permission.REPAIR_REQUEST_VIEW,
     Permission.WORK_ORDER_VIEW,
 
-    Permission.REPAIR_APPROVE_RDHS,
+    Permission.PAYMENT_APPROVE_RDHS,
 
     Permission.PROCUREMENT_VIEW,
 
@@ -217,7 +216,7 @@ export const ROLE_PERMISSIONS: Record<RoleType, Permission[]> = {
     Permission.WORK_ORDER_VIEW,
 
     Permission.REPAIR_FEEDBACK,
-    Permission.REPAIR_APPROVE_MS,
+    Permission.PAYMENT_APPROVE_MS,
 
     Permission.PROCUREMENT_VIEW,
 
@@ -250,7 +249,7 @@ export const ROLE_PERMISSIONS: Record<RoleType, Permission[]> = {
     Permission.WORK_ORDER_VIEW,
 
     Permission.REPAIR_FEEDBACK,
-    Permission.REPAIR_APPROVE_MS,
+    Permission.PAYMENT_APPROVE_MS,
 
     Permission.PERMISSION_VIEW,
     Permission.PERMISSION_CREATE,
@@ -322,7 +321,7 @@ export const ROLE_PERMISSIONS: Record<RoleType, Permission[]> = {
 
     Permission.EQUIPMENT_VIEW,
 
-    Permission.REPAIR_PAYMENT,
+    Permission.PAYMENT_RECORD,
   ],
 
   INSTITUTION_USER: [

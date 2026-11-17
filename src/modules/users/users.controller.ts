@@ -33,6 +33,7 @@ import {
   QueryUsersDto,
   UpdateUserDto,
 } from './dto/user.dto';
+import { buildAuditContext } from '../../common/utils/audit-context.util';
 
 interface AuthenticatedRequest extends Request {
   user: JwtPayload;
@@ -85,7 +86,7 @@ export class UsersController {
       activeRole,
       (req.user as JwtPayload).sub,
       dto,
-    );
+      buildAuditContext(req),    );
   }
 
   // ── PATCH /api/users/:id ───────────────────────────────────────────
@@ -95,8 +96,8 @@ export class UsersController {
     @ActiveRole() activeRole: JwtRoleClaim,
     @Param('id') id: string,
     @Body() dto: UpdateUserDto,
-  ) {
-    return this.usersService.updateUser(activeRole, id, dto);
+    @Req() req: Request,  ) {
+    return this.usersService.updateUser(activeRole, id, dto, buildAuditContext(req));
   }
 
   // ── DELETE /api/users/:id ──────────────────────────────────────────
@@ -106,8 +107,8 @@ export class UsersController {
   async remove(
     @ActiveRole() activeRole: JwtRoleClaim,
     @Param('id') id: string,
-  ) {
-    return this.usersService.deleteUser(activeRole, id);
+    @Req() req: Request,  ) {
+    return this.usersService.deleteUser(activeRole, id, buildAuditContext(req));
   }
 
   // ── POST /api/users/:id/reset-password ────────────────────────────
@@ -117,8 +118,8 @@ export class UsersController {
   async resetPassword(
     @ActiveRole() activeRole: JwtRoleClaim,
     @Param('id') id: string,
-  ) {
-    return this.usersService.resetPassword(activeRole, id);
+    @Req() req: Request,  ) {
+    return this.usersService.resetPassword(activeRole, id, buildAuditContext(req));
   }
 
   // ── PATCH /api/users/:id/active ────────────────────────────────────
@@ -128,8 +129,8 @@ export class UsersController {
     @ActiveRole() activeRole: JwtRoleClaim,
     @Param('id') id: string,
     @Body() body: { active: boolean },
-  ) {
-    return this.usersService.setActive(activeRole, id, body.active);
+    @Req() req: Request,  ) {
+    return this.usersService.setActive(activeRole, id, body.active, buildAuditContext(req));
   }
 
   // ══════════════════════════════════════════════════════════════════
@@ -150,7 +151,7 @@ export class UsersController {
       (req.user as JwtPayload).sub,
       userId,
       dto,
-    );
+      buildAuditContext(req),    );
   }
 
   // ── DELETE /api/users/:id/roles/:roleId ───────────────────────────
@@ -161,8 +162,8 @@ export class UsersController {
     @ActiveRole() activeRole: JwtRoleClaim,
     @Param('id') userId: string,
     @Param('roleId') roleId: string,
-  ) {
-    return this.usersService.removeRole(activeRole, userId, roleId);
+    @Req() req: Request,  ) {
+    return this.usersService.removeRole(activeRole, userId, roleId, buildAuditContext(req));
   }
 
   // ══════════════════════════════════════════════════════════════════
@@ -193,7 +194,7 @@ export class UsersController {
       (req.user as JwtPayload).sub,
       userId,
       dto,
-    );
+      buildAuditContext(req),    );
   }
 
   // ── DELETE /api/users/:id/permissions/:permissionId ───────────────
@@ -204,8 +205,12 @@ export class UsersController {
     @ActiveRole() activeRole: JwtRoleClaim,
     @Param('id') userId: string,
     @Param('permissionId') permissionId: string,
-  ) {
-    return this.usersService.revokePermission(activeRole, userId, permissionId);
+    @Req() req: Request,  ) {
+    return this.usersService.revokePermission(
+      activeRole,
+      userId,
+      permissionId,
+      buildAuditContext(req),    );
   }
 
   // ── PUT /api/users/:id/permissions ────────────────────────────────
@@ -222,6 +227,6 @@ export class UsersController {
       (req.user as JwtPayload).sub,
       userId,
       body.permissions,
-    );
+      buildAuditContext(req),    );
   }
 }

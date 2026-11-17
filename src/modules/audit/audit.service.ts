@@ -6,9 +6,12 @@ import { JwtRoleClaim } from '../../auth/jwt-payload.interface';
 import { BaseQueryDto } from '../../shared/dto/base-query.dto';
 import { AuditContext } from 'src/common/utils/audit-context.util';
 import { randomUUID } from 'crypto';
+import { AuditAction, AUDIT_ACTIONS } from './audit.constants';
+
+export { AUDIT_ACTIONS, type AuditAction };
 
 export interface AuditEntry {
-  action: 'CREATE' | 'UPDATE' | 'DELETE' | 'ASSIGN' | 'STATUS_CHANGE' | string;
+  action: AuditAction;
   entityName: string;
   recordId: string;
   description: string;

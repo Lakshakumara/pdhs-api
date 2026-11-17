@@ -4,7 +4,7 @@ import {
   ROLE_PERMISSIONS,
   SCOPE_META,
   SCOPE_ROLES,
-} from '../src/auth/role-permissions';
+} from '../src/auth/constants/role-permissions';
 import * as fs from 'fs';
 import * as path from 'path';
 

@@ -2,6 +2,7 @@ import {
   Controller,
   Post,
   Body,
+  Param,
   Req,
   UseGuards,
   HttpCode,
@@ -17,7 +18,8 @@ import {
   ForgotPasswordDto,
   ResetPasswordDto,
 } from './auth.dto';
-import { JwtAuthGuard } from '../common/guards/auth.guard';
+import { JwtAuthGuard, ActiveRoleGuard } from '../common/guards/auth.guard';
+import { PermissionGuard } from '../common/guards/permission.guard';
 import type { JwtPayload } from './jwt-payload.interface';
 import {
   PERMISSION_GROUPS,
@@ -27,13 +29,14 @@ import {
   ROLE_META,
   ROLE_PERMISSIONS,
   SCOPE_META,
-} from './role-permissions';
+} from './constants/role-permissions';
 import { Permission } from './permission.enum';
 import { SkipPermission } from 'src/common/decorators/skip-permission.decorator';
+import { RequirePermission } from 'src/common/decorators/require-permission.decorator';
 
 @Controller('api/auth')
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(private readonly authService: AuthService) { }
 
   // Everything the UI needs to render roles/scopes/permissions —
   // served straight from the backend policy files so the frontend
@@ -94,8 +97,8 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   @Post('logout')
   @HttpCode(HttpStatus.NO_CONTENT)
-  async logout(@Body() dto: RefreshTokenDto) {
-    await this.authService.logout(dto.refreshToken);
+  async logout(@Body() dto: RefreshTokenDto, @Req() req: Request) {
+    await this.authService.logout(dto.refreshToken, { ip: req.ip });
   }
 
   // ───────────────────────────────────────────────────────────────────
@@ -124,6 +127,50 @@ export class AuthController {
       (req.user as JwtPayload).sub,
       dto.currentPassword,
       dto.newPassword,
+      { ip: req.ip },
+    );
+  }
+
+  // ───────────────────────────────────────────────────────────────────
+  // POST /api/auth/impersonate/end   — bookend audit for the session.
+  // MUST be declared BEFORE impersonate/:userId, otherwise Express
+  // matches the literal "end" as the :userId param.
+  // The token itself expires after 15m regardless; the frontend calls
+  // this on the banner's Exit button so auditors see a clean START/END.
+  // @SkipPermission: called WITH the impersonation token, whose `sub` is
+  // the target user (who does not hold AUTH_IMPERSONATE). JwtAuthGuard
+  // still authenticates, and the service attributes the audit row to the
+  // real actor via the `impersonator` claim.
+  // ───────────────────────────────────────────────────────────────────
+  @UseGuards(JwtAuthGuard, ActiveRoleGuard, PermissionGuard)
+  @Post('impersonate/end')
+  @SkipPermission()
+  @HttpCode(HttpStatus.OK)
+  async endImpersonation(@Req() req: Request) {
+    const payload = req.user as JwtPayload;
+    await this.authService.endImpersonation(
+      payload,
+      payload.impersonator ? payload.sub : null,
+      { ip: req.ip },
+    );
+    return { ended: true };
+  }
+
+  // ───────────────────────────────────────────────────────────────────
+  // POST /api/auth/impersonate/:userId   — "View As" (troubleshooting)
+  // Full 3-guard chain + AUTH_IMPERSONATE (SUPER_ADMIN_PDHS only).
+  // Returns a 15m token carrying the TARGET user's claims plus an
+  // `impersonator` claim; no refresh token is issued. START is audited.
+  // ───────────────────────────────────────────────────────────────────
+  @UseGuards(JwtAuthGuard, ActiveRoleGuard, PermissionGuard)
+  @Post('impersonate/:userId')
+  @RequirePermission(Permission.AUTH_IMPERSONATE)
+  @HttpCode(HttpStatus.OK)
+  async impersonate(@Param('userId') userId: string, @Req() req: Request) {
+    return this.authService.impersonate(
+      userId,
+      req.user as JwtPayload,
+      { ip: req.ip, userAgent: req.headers['user-agent'] },
     );
   }
 

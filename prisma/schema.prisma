@@ -135,6 +135,7 @@ model Supplier {
   createdAt        DateTime        @default(now())
   updatedAt        DateTime        @updatedAt
   purchaseOrders   PurchaseOrder[]
+  equipment        Equipment[]
   supplyItem       Json?           // Array of InventoryItem { id: string, name: string }
   remarks          String?
 
@@ -203,6 +204,7 @@ model Equipment {
   category              String
   manufacturer          String?
   countryOfOrigin       String?
+  supplierId            String?
   supplierName          String?
   tenderNumber          String?
   purchaseOrderNumber   String?
@@ -219,6 +221,7 @@ model Equipment {
   updatedAt             DateTime              @updatedAt
   assignments           Assignment[]
   assignedInstitution   Institution?          @relation(fields: [assignedInstitutionId], references: [id])
+  supplier              Supplier?             @relation(fields: [supplierId], references: [id], onDelete: SetNull)
   disposal              EquipmentDisposal?
   spareParts            EquipmentSpareParts[]
   repairRequests        RepairRequest[]
@@ -227,6 +230,7 @@ model Equipment {
   @@index([status])
   @@index([category])
   @@index([assignedInstitutionId])
+  @@index([supplierId])
   @@index([name])
   @@index([serialNumber])
   @@index([modelNumber])
@@ -560,17 +564,17 @@ model SeedSnapshot {
 enum RoleType {
   SUPER_ADMIN_PDHS
   ADMIN_PDHS
+  VIEWER_PDHS
   SUPER_ADMIN_RDHS
   ADMIN_RDHS
+  VIEWER_RDHS
   SUPER_ADMIN_INSTITUTE
   ADMIN_INSTITUTE
-  VIEWER_PDHS
-  VIEWER_RDHS
   VIEWER_INSTITUTE
+  INSTITUTION_USER
   STORE_KEEPER
   BIOMEDICAL_TECHNICIAN
   PROCUREMENT_OFFICER
-  INSTITUTION_USER
 }
 
 enum ScopeType {

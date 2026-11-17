@@ -17,7 +17,7 @@ import { PrismaClient, RoleType } from '@prisma/client';
 import { Pool } from 'pg';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { randomUUID } from 'crypto';
-import { ROLE_PERMISSIONS } from '../src/auth/role-permissions';
+import { ROLE_PERMISSIONS } from '../src/auth/constants/role-permissions';
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 const adapter = new PrismaPg(pool, { schema: 'pdhs' });

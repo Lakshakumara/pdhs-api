@@ -1,5 +1,6 @@
 import {
   Body,
+  Req,
   Controller,
   Get,
   Param,
@@ -8,6 +9,7 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
+import type { Request } from 'express';
 import { JwtAuthGuard, ActiveRoleGuard } from '../../common/guards/auth.guard';
 import { PermissionGuard } from '../../common/guards/permission.guard';
 import { ActiveRole } from '../../common/decorators/active-role.decorator';
@@ -20,6 +22,7 @@ import {
   QueryEquipmentDto,
   UpdateEquipmentDto,
 } from './dto/equipment.dto';
+import { buildAuditContext } from '../../common/utils/audit-context.util';
 
 @UseGuards(JwtAuthGuard, ActiveRoleGuard, PermissionGuard)
 @Controller('api/equipment')
@@ -36,25 +39,25 @@ export class EquipmentController {
     return this.service.findEquipment(activeRole, query);
   }
 
-  // ── POST /api/equipment/add ────────────────────────────────────────
-  @Post('add')
+  // ── POST /api/equipment (+ /add) ──────────────────────────────────
+  @Post(['', 'add'])
   @RequirePermission(Permission.EQUIPMENT_CREATE)
   addEquipment(
     @ActiveRole() activeRole: JwtRoleClaim,
     @Body() data: CreateEquipmentDto,
-  ) {
-    return this.service.addEquipment(activeRole, data);
+    @Req() req: Request,  ) {
+    return this.service.addEquipment(activeRole, data, buildAuditContext(req));
   }
 
-  // ── PUT /api/equipment/update/:id ──────────────────────────────────
-  @Put('update/:id')
+  // ── PUT /api/equipment/:id (+ /update/:id) ─────────────────────────
+  @Put([':id', 'update/:id'])
   @RequirePermission(Permission.EQUIPMENT_UPDATE)
   updateEquipment(
     @Param('id') id: string,
     @ActiveRole() activeRole: JwtRoleClaim,
     @Body() data: UpdateEquipmentDto,
-  ) {
-    return this.service.updateEquipment(activeRole, id, data);
+    @Req() req: Request,  ) {
+    return this.service.updateEquipment(activeRole, id, data, buildAuditContext(req));
   }
 
   // ── POST /api/equipment/:id/assign ─────────────────────────────────
@@ -63,6 +66,7 @@ export class EquipmentController {
   assignEquipment(
     @Param('id') equipmentId: string,
     @ActiveRole() activeRole: JwtRoleClaim,
+    @Req() req: Request,
     @Body()
     body: {
       toInstitutionId: string;
@@ -76,6 +80,7 @@ export class EquipmentController {
       body.toInstitutionId,
       body.toEntity,
       body.quantity,
+      buildAuditContext(req),
     );
   }
 }

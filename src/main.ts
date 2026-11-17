@@ -13,7 +13,10 @@ async function bootstrap() {
     origin: [
       'http://localhost:4200',
       'http://localhost:3000',
-      'http://10.20.16.17:3000',
+      'http://10.20.16.57:4200',
+      'http://10.20.16.57:3000',
+      'http://192.168.0.101:4200',
+      'http://192.168.0.101:3000',
     ],
     credentials: true,
   });

@@ -26,14 +26,15 @@ src/
 ├── auth/                    # auth.module, auth.controller (api/auth/*), permission.service.ts, scope.service.ts,
 │   ├── strategies/jwt.strategy.ts
 │   ├── permission.enum.ts           # DERIVED re-export of Permission from permission.registry.ts (never hand-edit)
-│   ├── role-permissions.ts          # authorization policy: ROLE_PERMISSIONS (defaults), SCOPE_ROLES, ROLE_META, SCOPE_META
-│   └── constants/permission.registry.ts   # SINGLE SOURCE of permissions → gen:perms generates both FE files
+│   └── constants/                   # Single source of truth for authorization & permissions
+│       ├── permission.registry.ts   # Permission registry → gen:perms generates both FE files
+│       └── role-permissions.ts      # authorization policy: ROLE_PERMISSIONS, SCOPE_ROLES, ROLE_META, SCOPE_META
 ├── common/
 │   ├── decorators/          # @RequirePermission(), @SkipPermission(), @ActiveRole(), @TransformDate()
 │   └── guards/              # auth.guard.ts (JwtAuthGuard, ActiveRoleGuard), permission.guard.ts (PermissionGuard)
 ├── modules/                 # audit, dashboard, equipment, institute, inventory, organization, repair, supplier, users
 ├── prisma/                  # prisma.module (@Global), prisma.service (PrismaPg adapter, schema 'pdhs'), prisma-query-builder.ts
-└── shared/                  # dto/base-query.dto.ts (BaseQueryDto), id/ (IdService → 'SUP-2026-0001')
+└── shared/                  # dto/base-query.dto.ts (BaseQueryDto), id/ (IdService, id-prefixes.constant.ts)
 prisma/schema.prisma         # all models; migrations in prisma/migrations/
 ```
 
@@ -52,7 +53,7 @@ prisma/schema.prisma         # all models; migrations in prisma/migrations/
    ```
 3. **Adding a permission (single-source workflow):**
    1. `src/auth/constants/permission.registry.ts` — add the `Permission.X` entry (label/group/icon).
-   2. `src/auth/role-permissions.ts` — add it to the relevant `ROLE_PERMISSIONS[...]` defaults.
+   2. `src/auth/constants/role-permissions.ts` — add it to the relevant `ROLE_PERMISSIONS[...]` defaults.
    3. Use it: `@RequirePermission(Permission.X)` on the route.
    4. `npm run build` — `gen:perms` runs automatically on `prebuild` and regenerates the FE files.
    5. `npm run sync:perms` — backfills the new default to existing users (new users get it at create/role-add time).
@@ -146,7 +147,7 @@ src/app/
 ## Known gotchas (both repos)
 - **Backend**: `npm run lint` runs ESLint **with `--fix`** (rewrites files) and reports ~300 pre-existing errors across the codebase — not a clean gate. `src/old-controller` is a single fully-commented-out legacy file, not a folder. `delete-deploy.controller.ts` (`api/developer`, unguarded) is a dev leftover in `UsersModule`. `npm run seed:data` is broken (points at missing `prisma/seed-data.ts`; real data is `scripts/seed-data.ts`). No meaningful tests (only stock `test/app.e2e-spec.ts`).
 - **Frontend**: `institute` route is registered twice in `app.routes.ts` (dead `loadChildren` copy). `biomed-state.service.ts` is deprecated. `README.md` is the stock Angular CLI one. No ESLint.
-- Permission changes: edit `permission.registry.ts` + `role-permissions.ts` → `npm run build` (auto `gen:perms`) → `npm run sync:perms` for existing users. FE enum + types update automatically. Never hand-edit `permission.enum.ts` or the two generated FE files.
+- Permission changes: edit `src/auth/constants/permission.registry.ts` + `src/auth/constants/role-permissions.ts` → `npm run build` (auto `gen:perms`) → `npm run sync:perms` for existing users. FE enum + types update automatically. Never hand-edit `permission.enum.ts` or the two generated FE files.
 - DB: PostgreSQL, database `biomedical`, schema `pdhs`, user `biomedical_user`; `.env` at backend repo root (`DATABASE_URL`, `JWT_SECRET`, `JWT_EXPIRES_IN`, `PORT`).
 
 ## Verification checklist after changes

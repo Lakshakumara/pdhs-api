@@ -141,7 +141,7 @@ export class RepairController {
   // ── PUT /api/work-orders/:id/payment ──────────────────────────────
   // Payment step: PAYMENT_PENDING → MS_APPROVAL.
   @Put('/work-orders/:id/payment')
-  @RequirePermission(Permission.REPAIR_PAYMENT)
+  @RequirePermission(Permission.PAYMENT_RECORD)
   async recordPayment(
     @ActiveRole() activeRole: JwtRoleClaim,
     @Param('id') workOrderId: string,
@@ -157,9 +157,9 @@ export class RepairController {
   @Put('/work-orders/:id/approve')
   @RequirePermission((req) => {
     const stage = req.body?.stage;
-    if (stage === 'MS') return Permission.REPAIR_APPROVE_MS;
-    if (stage === 'RDHS') return Permission.REPAIR_APPROVE_RDHS;
-    return Permission.REPAIR_APPROVE_PDHS; // unknown stage → strictest gate
+    if (stage === 'MS') return Permission.PAYMENT_APPROVE_MS;
+    if (stage === 'RDHS') return Permission.PAYMENT_APPROVE_RDHS;
+    return Permission.PAYMENT_APPROVE_PDHS; // unknown stage → strictest gate
   })
   async approveStage(
     @ActiveRole() activeRole: JwtRoleClaim,

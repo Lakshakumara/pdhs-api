@@ -21,12 +21,29 @@ export interface JwtRoleClaim {
   scopeId: string | null;
 }
 
+/**
+ * Set ONLY on impersonation ("View As") tokens issued by
+ * POST /api/auth/impersonate/:userId. `sub`/`roles` describe the
+ * IMPERSONATED user — permissions and scope resolve as that user —
+ * while this field preserves the real actor for audit attribution
+ * (see buildAuditContext) and for the frontend banner.
+ *
+ * Impersonation tokens are short-lived (15m) and are never issued a
+ * refresh token, so they cannot be extended via POST /auth/refresh.
+ */
+export interface ImpersonatorClaim {
+  sub: string; // admin's userId (the REAL actor)
+  username: string;
+  fullName: string;
+}
+
 export interface JwtPayload {
   sub: string; // userId
   username: string;
   fullName: string;
   institutionId: string | null;
   roles: JwtRoleClaim[];
+  impersonator?: ImpersonatorClaim;
   iat?: number;
   exp?: number;
 }

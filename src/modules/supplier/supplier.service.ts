@@ -2,6 +2,8 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { JwtRoleClaim } from 'src/auth/jwt-payload.interface';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { IdService, ID_PREFIXES } from 'src/shared/id/id.service';
+import { AuditContext } from 'src/common/utils/audit-context.util';
+import { AuditService } from '../audit/audit.service';
 import {
   CreateSupplierDto,
   QuerySupplierDto,
@@ -13,6 +15,7 @@ export class SupplierService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly idService: IdService,
+    private readonly auditService: AuditService,
   ) {}
 
   async findSupplier(activeRole: JwtRoleClaim, query: QuerySupplierDto) {
@@ -78,10 +81,10 @@ export class SupplierService {
     return supplier;
   }
 
-  async createSupplier(dto: CreateSupplierDto) {
+  async createSupplier(dto: CreateSupplierDto, ctx?: AuditContext) {
     const id = await this.idService.generate(ID_PREFIXES.SUPPLIER);
 
-    return this.prisma.supplier.create({
+    const supplier = await this.prisma.supplier.create({
       data: {
         id,
         name: dto.name,
@@ -98,9 +101,24 @@ export class SupplierService {
         isDeleted: false,
       },
     });
+
+    if (ctx) {
+      await this.auditService.log(ctx, {
+        action: 'CREATE',
+        entityName: 'Supplier',
+        recordId: supplier.id,
+        description: `Created supplier "${supplier.name}"`,
+      });
+    }
+
+    return supplier;
   }
 
-  async updateSupplier(id: string, dto: UpdateSupplierDto) {
+  async updateSupplier(
+    id: string,
+    dto: UpdateSupplierDto,
+    ctx?: AuditContext,
+  ) {
     const existing = await this.prisma.supplier.findFirst({
       where: { id, isDeleted: false },
     });
@@ -109,7 +127,7 @@ export class SupplierService {
       throw new NotFoundException(`Supplier with ID "${id}" not found`);
     }
 
-    return this.prisma.supplier.update({
+    const updated = await this.prisma.supplier.update({
       where: { id },
       data: {
         name: dto.name !== undefined ? dto.name : existing.name,
@@ -145,9 +163,20 @@ export class SupplierService {
             : (existing.supplyItem as any),
       },
     });
+
+    if (ctx) {
+      await this.auditService.log(ctx, {
+        action: 'UPDATE',
+        entityName: 'Supplier',
+        recordId: updated.id,
+        description: `Updated supplier "${updated.name}"`,
+      });
+    }
+
+    return updated;
   }
 
-  async deleteSupplier(id: string) {
+  async deleteSupplier(id: string, ctx?: AuditContext) {
     const existing = await this.prisma.supplier.findFirst({
       where: { id, isDeleted: false },
     });
@@ -156,9 +185,20 @@ export class SupplierService {
       throw new NotFoundException(`Supplier with ID "${id}" not found`);
     }
 
-    return this.prisma.supplier.update({
+    const deleted = await this.prisma.supplier.update({
       where: { id },
       data: { isDeleted: true },
     });
+
+    if (ctx) {
+      await this.auditService.log(ctx, {
+        action: 'DELETE',
+        entityName: 'Supplier',
+        recordId: deleted.id,
+        description: `Deleted supplier "${deleted.name}"`,
+      });
+    }
+
+    return deleted;
   }
 }

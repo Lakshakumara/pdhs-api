@@ -3,6 +3,7 @@ import {
   UnauthorizedException,
   BadRequestException,
   NotFoundException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
@@ -11,15 +12,22 @@ import { randomUUID } from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import { JwtPayload, JwtRoleClaim } from './jwt-payload.interface';
 import { generateOpaqueToken, hashToken } from './crypto.util';
-
-const BCRYPT_ROUNDS = 12;
-const REFRESH_TOKEN_TTL_DAYS = 7;
-const PASSWORD_RESET_TTL_HOURS = 1;
+import {
+  BCRYPT_ROUNDS,
+  REFRESH_TOKEN_TTL_DAYS,
+  PASSWORD_RESET_TTL_HOURS,
+} from './constants/auth.constants';
+import { AuditService } from '../modules/audit/audit.service';
+import { AUDIT_ACTIONS } from '../modules/audit/audit.constants';
+import { AuditContext } from '../common/utils/audit-context.util';
 
 export interface RequestMeta {
   ip?: string;
   userAgent?: string;
 }
+
+/** Impersonation ("View As") sessions are deliberately short-lived. */
+export const IMPERSONATION_TTL = '15m';
 
 @Injectable()
 export class AuthService {
@@ -27,6 +35,7 @@ export class AuthService {
     private prisma: PrismaService,
     private jwtService: JwtService,
     private configService: ConfigService,
+    private auditService: AuditService,
   ) {}
 
   // ───────────────────────────────────────────────────────────────────────
@@ -46,17 +55,30 @@ export class AuthService {
     });
 
     if (!user || !user.active) {
-      // Same message for "no such user" and "wrong password" —
-      // don't leak which one it was.
+      // Only audit failures where the account EXISTS — audit_logs.userId
+      // is a FK to the User table, and we also don't want a row per
+      // random username probe. Same message either way: don't leak which
+      // one it was.
+      if (user) {
+        await this.auditAuthEvent(AUDIT_ACTIONS.LOGIN_FAILED, user, meta, {
+          reason: user.active ? 'invalid_password' : 'inactive_account',
+        });
+      }
       throw new UnauthorizedException('Invalid username or password');
     }
 
     const passwordValid = await bcrypt.compare(password, user.passwordHash);
     if (!passwordValid) {
+      await this.auditAuthEvent(AUDIT_ACTIONS.LOGIN_FAILED, user, meta, {
+        reason: 'invalid_password',
+      });
       throw new UnauthorizedException('Invalid username or password');
     }
 
     if (user.roles.length === 0) {
+      await this.auditAuthEvent(AUDIT_ACTIONS.LOGIN_FAILED, user, meta, {
+        reason: 'no_roles',
+      });
       throw new UnauthorizedException(
         'This account has no assigned roles. Contact your administrator.',
       );
@@ -65,11 +87,101 @@ export class AuthService {
     const accessToken = this.signAccessToken(user);
     const refreshToken = await this.issueRefreshToken(user.id, meta);
 
+    await this.auditAuthEvent(AUDIT_ACTIONS.LOGIN, user, meta);
+
     return {
       token: accessToken,
       refreshToken,
       user: this.toUserDto(user),
     };
+  }
+
+  // ───────────────────────────────────────────────────────────────────────
+  // IMPERSONATION ("View As") — troubleshooting hospital-staff issues
+  // without ever asking for their password.
+  //
+  // Returns a short-lived (15m) access token carrying the TARGET user's
+  // claims (so permissions/scope resolve exactly as that user) plus an
+  // `impersonator` claim preserving the real actor for audit attribution.
+  // No refresh token is issued — the session cannot be extended.
+  // ───────────────────────────────────────────────────────────────────────
+
+  async impersonate(targetUserId: string, admin: JwtPayload, meta: RequestMeta) {
+    const target = await this.prisma.user.findUnique({
+      where: { id: targetUserId },
+      include: {
+        roles: true,
+        institution: { include: { district: true } },
+        permissions: {
+          include: { grantedBy: { select: { id: true, fullName: true } } },
+        },
+      },
+    });
+
+    if (!target) throw new NotFoundException('User not found');
+    if (!target.active) {
+      throw new ForbiddenException('Cannot impersonate an inactive user');
+    }
+    if (target.roles.length === 0) {
+      throw new ForbiddenException(
+        'Cannot impersonate a user with no assigned roles',
+      );
+    }
+    if (target.id === admin.sub) {
+      throw new BadRequestException('You are already operating as yourself');
+    }
+
+    const token = this.signAccessToken(target, {
+      expiresIn: IMPERSONATION_TTL,
+      impersonator: {
+        sub: admin.sub,
+        username: admin.username,
+        fullName: admin.fullName,
+      },
+    });
+
+    await this.auditService.log(this.authAuditContext(admin, meta), {
+      action: AUDIT_ACTIONS.IMPERSONATE_START,
+      entityName: 'User',
+      recordId: target.id,
+      description: `${admin.fullName} started impersonating ${target.fullName} (${target.username})`,
+      metadata: {
+        targetUserId: target.id,
+        targetUsername: target.username,
+      },
+    });
+
+    return {
+      token,
+      user: this.toUserDto(target),
+      impersonating: true,
+      expiresIn: IMPERSONATION_TTL,
+    };
+  }
+
+  /** Records the end of an impersonation session (audit trail bookend). */
+  async endImpersonation(
+    admin: JwtPayload,
+    targetUserId: string | null,
+    meta: RequestMeta,
+  ): Promise<void> {
+    const actor = admin.impersonator ?? admin;
+    const target = targetUserId
+      ? await this.prisma.user.findUnique({
+          where: { id: targetUserId },
+          select: { fullName: true, username: true },
+        })
+      : null;
+
+    await this.auditService.log(this.authAuditContext(actor, meta), {
+      action: AUDIT_ACTIONS.IMPERSONATE_END,
+      entityName: 'User',
+      recordId: targetUserId ?? actor.sub,
+      description: target
+        ? `${actor.fullName} ended impersonation of ${target.fullName} (${target.username})`
+        : `${actor.fullName} ended an impersonation session`,
+      metadata: targetUserId ? { targetUserId } : undefined,
+    });
   }
 
   // ───────────────────────────────────────────────────────────────────────
@@ -119,12 +231,33 @@ export class AuthService {
   // ───────────────────────────────────────────────────────────────────────
 
   /** Revokes a single refresh token (the one used on this device). */
-  async logout(refreshToken: string): Promise<void> {
+  async logout(refreshToken: string, meta?: RequestMeta): Promise<void> {
     const hashed = hashToken(refreshToken);
+    const stored = await this.prisma.refreshToken.findUnique({
+      where: { token: hashed },
+      include: { user: { select: { id: true, fullName: true, username: true } } },
+    });
     await this.prisma.refreshToken.updateMany({
       where: { token: hashed, revokedAt: null },
       data: { revokedAt: new Date() },
     });
+
+    if (stored?.user && meta) {
+      await this.auditService.log(
+        {
+          userId: stored.user.id,
+          userName: stored.user.fullName,
+          userRole: 'UNKNOWN',
+          ipAddress: meta.ip,
+        },
+        {
+          action: AUDIT_ACTIONS.LOGOUT,
+          entityName: 'User',
+          recordId: stored.user.id,
+          description: `${stored.user.fullName} signed out`,
+        },
+      );
+    }
   }
 
   /** Revokes ALL active refresh tokens for a user ("log out everywhere"). */
@@ -143,6 +276,7 @@ export class AuthService {
     userId: string,
     currentPassword: string,
     newPassword: string,
+    meta?: RequestMeta,
   ): Promise<void> {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) throw new NotFoundException('User not found');
@@ -165,6 +299,21 @@ export class AuthService {
         data: { revokedAt: new Date() },
       }),
     ]);
+
+    await this.auditService.log(
+      {
+        userId: user.id,
+        userName: user.fullName,
+        userRole: 'SELF',
+        ipAddress: meta?.ip,
+      },
+      {
+        action: AUDIT_ACTIONS.CHANGE_PASSWORD,
+        entityName: 'User',
+        recordId: user.id,
+        description: `${user.fullName} changed their own password`,
+      },
+    );
   }
 
   // ───────────────────────────────────────────────────────────────────────
@@ -219,6 +368,11 @@ export class AuthService {
 
     const passwordHash = await bcrypt.hash(newPassword, BCRYPT_ROUNDS);
 
+    const resetUser = await this.prisma.user.findUnique({
+      where: { id: record.userId },
+      select: { id: true, fullName: true },
+    });
+
     await this.prisma.$transaction([
       this.prisma.user.update({
         where: { id: record.userId },
@@ -234,6 +388,73 @@ export class AuthService {
         data: { revokedAt: new Date() },
       }),
     ]);
+
+    if (resetUser) {
+      await this.auditService.log(
+        {
+          userId: resetUser.id,
+          userName: resetUser.fullName,
+          userRole: 'SELF',
+        },
+        {
+          action: AUDIT_ACTIONS.RESET_PASSWORD,
+          entityName: 'User',
+          recordId: resetUser.id,
+          description: `${resetUser.fullName} completed a self-service password reset`,
+        },
+      );
+    }
+  }
+
+  // ───────────────────────────────────────────────────────────────────────
+  // INTERNAL — audit helpers
+  // ───────────────────────────────────────────────────────────────────────
+
+  /** AuditContext from a JWT payload (the authenticated actor). */
+  private authAuditContext(
+    actor: { sub: string; fullName: string; roles?: JwtRoleClaim[] },
+    meta: RequestMeta,
+  ): AuditContext {
+    return {
+      userId: actor.sub,
+      userName: actor.fullName,
+      userRole: actor.roles?.[0]?.role ?? 'UNKNOWN',
+      ipAddress: meta.ip,
+    };
+  }
+
+  /**
+   * Writes an auth-related audit row. Best-effort: an audit failure must
+   * never block the login flow itself.
+   */
+  private async auditAuthEvent(
+    action: string,
+    user: { id: string; fullName: string; roles?: { role: any }[] },
+    meta: RequestMeta,
+    metadata?: Record<string, unknown>,
+  ): Promise<void> {
+    try {
+      await this.auditService.log(
+        {
+          userId: user.id,
+          userName: user.fullName,
+          userRole: user.roles?.[0]?.role ?? 'UNKNOWN',
+          ipAddress: meta.ip,
+        },
+        {
+          action,
+          entityName: 'User',
+          recordId: user.id,
+          description:
+            action === AUDIT_ACTIONS.LOGIN
+              ? `${user.fullName} signed in`
+              : `${user.fullName} sign-in failed (${metadata?.reason ?? 'unknown'})`,
+          metadata,
+        },
+      );
+    } catch {
+      // never break authentication because of an audit write failure
+    }
   }
 
   // ───────────────────────────────────────────────────────────────────────
@@ -243,14 +464,24 @@ export class AuthService {
   /**
    * Signs an access token containing role/scope claims (but NOT
    * permissions — see permissions.ts for rationale).
+   *
+   * `opts.expiresIn` overrides the default TTL (used for short-lived
+   * impersonation tokens); `opts.impersonator` stamps the real actor
+   * onto a "View As" token.
    */
-  private signAccessToken(user: {
-    id: string;
-    username: string;
-    fullName: string;
-    institutionId: string | null;
-    roles: { role: any; scopeType: any; scopeId: string | null }[];
-  }): string {
+  private signAccessToken(
+    user: {
+      id: string;
+      username: string;
+      fullName: string;
+      institutionId: string | null;
+      roles: { role: any; scopeType: any; scopeId: string | null }[];
+    },
+    opts?: {
+      expiresIn?: string;
+      impersonator?: { sub: string; username: string; fullName: string };
+    },
+  ): string {
     const roleClaims: JwtRoleClaim[] = user.roles.map((r) => ({
       sub: user.id,
       role: r.role,
@@ -264,6 +495,7 @@ export class AuthService {
       fullName: user.fullName,
       institutionId: user.institutionId,
       roles: roleClaims,
+      ...(opts?.impersonator ? { impersonator: opts.impersonator } : {}),
     };
 
     return this.jwtService.sign(payload, {
@@ -274,7 +506,8 @@ export class AuthService {
       // See auth.module.ts for why this cast is needed — JwtSignOptions
       // types expiresIn as `number | StringValue`, narrower than the
       // plain `string` ConfigService.get() returns.
-      expiresIn: this.configService.get<string>('JWT_EXPIRES_IN', '8h') as any,
+      expiresIn: (opts?.expiresIn ??
+        this.configService.get<string>('JWT_EXPIRES_IN', '8h')) as any,
     });
   }
 

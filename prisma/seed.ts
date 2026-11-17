@@ -65,13 +65,21 @@ async function main() {
   }
 
   // Seed User Permission
+  // Match on the natural key (userId, permission) instead of id — the DB may
+  // hold rows with legacy ids (renamed permissions, sync:perms UUID rows).
   console.log('Seeding User Permissions...')
   for (const permission of seedData.userPermissions) {
-    await prisma.userPermission.upsert({
-      where: { id: permission.id },
-      update: permission,
-      create: permission,
+    const existing = await prisma.userPermission.findFirst({
+      where: { userId: permission.userId, permission: permission.permission },
     })
+    if (existing) {
+      await prisma.userPermission.update({
+        where: { id: existing.id },
+        data: permission,
+      })
+    } else {
+      await prisma.userPermission.create({ data: permission })
+    }
   }
 
   // Seed Suppliers

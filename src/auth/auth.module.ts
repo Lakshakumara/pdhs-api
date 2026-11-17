@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { JwtModule, JwtModuleOptions } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
 import { ConfigModule, ConfigService } from '@nestjs/config';
@@ -10,10 +10,14 @@ import { JwtAuthGuard, ActiveRoleGuard } from '../common/guards/auth.guard';
 import { PermissionGuard } from '../common/guards/permission.guard';
 import { PermissionService } from './permission.service';
 import { ScopeService } from './scope.service';
+import { AuditModule } from '../modules/audit/audit.module';
 
 @Module({
   imports: [
     PrismaModule,
+    // AuditModule imports AuthModule (for guards), so the reverse edge
+    // needs forwardRef — auth events (login/logout/impersonate) are audited.
+    forwardRef(() => AuditModule),
     PassportModule.register({ defaultStrategy: 'jwt' }),
     JwtModule.registerAsync({
       imports: [ConfigModule],

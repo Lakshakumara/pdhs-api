@@ -174,6 +174,10 @@ export class CreateEquipmentDto {
 
   @IsOptional()
   @IsString()
+  supplierId?: string;
+
+  @IsOptional()
+  @IsString()
   supplierName?: string;
 
   @IsOptional()
@@ -261,6 +265,10 @@ export class UpdateEquipmentDto {
 
   @IsOptional()
   @IsString()
+  supplierId?: string;
+
+  @IsOptional()
+  @IsString()
   supplierName?: string;
 
   @IsOptional()
@@ -329,4 +337,8 @@ export class QueryEquipmentDto extends BaseQueryDto {
 
   @IsOptional()
   assignedInstitutionId?: string;
+
+  @IsOptional()
+  @IsString()
+  supplierId?: string;
 }
