@@ -39,7 +39,7 @@ export class AuditService {
       [],
     );
 
-    const [items, total] = await this.prisma.$transaction([
+    const [items, total] = await Promise.all([
       this.prisma.auditLog.findMany({
         where,
         skip,

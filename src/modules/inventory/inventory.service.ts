@@ -20,7 +20,7 @@ export class InventoryService {
       [],
     );
 
-    const [items, total] = await this.prisma.$transaction([
+    const [items, total] = await Promise.all([
       this.prisma.inventoryItem.findMany({
         where,
         skip,

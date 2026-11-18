@@ -537,7 +537,7 @@ export class RepairService {
       ['priority', 'workOrder.status'],
     );
     console.log('where', where);
-    const [items, total] = await this.prisma.$transaction([
+    const [items, total] = await Promise.all([
       this.prisma.repairRequest.findMany({
         where,
         skip,
@@ -567,7 +567,7 @@ export class RepairService {
       ['equipmentId'],
     );
 
-    const [items, total] = await this.prisma.$transaction([
+    const [items, total] = await Promise.all([
       this.prisma.repairRequest.findMany({
         where: { ...where, equipmentId: query.equipmentId },
         skip,
@@ -623,7 +623,7 @@ export class RepairService {
       ['repairRequestId', 'status'],
     );
 
-    const [items, total] = await this.prisma.$transaction([
+    const [items, total] = await Promise.all([
       this.prisma.workOrder.findMany({
         where,
         skip,

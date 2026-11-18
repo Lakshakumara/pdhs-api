@@ -33,7 +33,7 @@ export class EquipmentService {
       ['category', 'status', 'assignedInstitutionId', 'supplierId'],
     );
 
-    const [items, total] = await this.prisma.$transaction([
+    const [items, total] = await Promise.all([
       this.prisma.equipment.findMany({
         where,
         skip,

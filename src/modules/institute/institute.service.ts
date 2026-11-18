@@ -56,7 +56,7 @@ export class InstituteService {
       ? { [query.sortBy]: query.sortOrder ?? 'asc' }
       : { name: 'asc' };
 
-    const [items, total] = await this.prisma.$transaction([
+    const [items, total] = await Promise.all([
       this.prisma.institution.findMany({
         where,
         skip,

@@ -8,7 +8,10 @@ import {
 import { PrismaService } from '../../prisma/prisma.service';
 import { ScopeService } from '../../auth/scope.service';
 import { JwtRoleClaim } from '../../auth/jwt-payload.interface';
-import { ROLE_PERMISSIONS, SCOPE_ROLES } from '../../auth/constants/role-permissions';
+import {
+  ROLE_PERMISSIONS,
+  SCOPE_ROLES,
+} from '../../auth/constants/role-permissions';
 import { Permission } from '../../auth/permission.enum';
 import * as bcrypt from 'bcrypt';
 import { randomUUID } from 'crypto';
@@ -32,7 +35,7 @@ export class UsersService {
     private readonly prisma: PrismaService,
     private readonly scopeService: ScopeService,
     private readonly auditService: AuditService,
-  ) { }
+  ) {}
 
   // ── USER SELECT ──────────────────────────────────────────────────────
   private get userSelect() {
@@ -119,7 +122,7 @@ export class UsersService {
       where.roles = { some: { role: query.role } };
     }
 
-    const [items, total] = await this.prisma.$transaction([
+    const [items, total] = await Promise.all([
       this.prisma.user.findMany({
         where,
         skip,
@@ -659,7 +662,7 @@ export class UsersService {
     if (missing.length > 0) {
       throw new ForbiddenException(
         `You cannot grant permission${missing.length > 1 ? 's' : ''} ` +
-        `${missing.join(', ')} — you do not hold ${missing.length > 1 ? 'them' : 'it'} yourself`,
+          `${missing.join(', ')} — you do not hold ${missing.length > 1 ? 'them' : 'it'} yourself`,
       );
     }
   }
