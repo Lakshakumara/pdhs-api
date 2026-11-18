@@ -21,11 +21,7 @@ export const SCOPE_ROLES: Record<ScopeType, RoleType[]> = {
     RoleType.BIOMEDICAL_TECHNICIAN,
     RoleType.PROCUREMENT_OFFICER,
   ],
-  RDHS: [
-    RoleType.SUPER_ADMIN_RDHS,
-    RoleType.ADMIN_RDHS,
-    RoleType.VIEWER_RDHS,
-  ],
+  RDHS: [RoleType.SUPER_ADMIN_RDHS, RoleType.ADMIN_RDHS, RoleType.VIEWER_RDHS],
   INSTITUTE: [
     RoleType.SUPER_ADMIN_INSTITUTE,
     RoleType.ADMIN_INSTITUTE,
@@ -93,7 +89,7 @@ export const ROLE_PERMISSIONS: Record<RoleType, Permission[]> = {
     Permission.WORK_ORDER_COMPLETE,
     Permission.WORK_ORDER_ESCALATE_VENDOR,
     Permission.WORK_ORDER_VERIFY,
-    
+
     Permission.PAYMENT_RECORD,
     Permission.PAYMENT_APPROVE_PDHS,
 

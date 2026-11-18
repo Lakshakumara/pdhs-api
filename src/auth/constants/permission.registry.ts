@@ -188,14 +188,16 @@ export const PERMISSIONS = {
   PAYMENT_APPROVE_RDHS: {
     group: 'Payment Process',
     label: 'RDHS Payment Approval',
-    description: 'Regional Director of Health Services approves the repair payment',
+    description:
+      'Regional Director of Health Services approves the repair payment',
     icon: 'pi-check-circle',
     action: 'approve',
   },
   PAYMENT_APPROVE_PDHS: {
     group: 'Payment Process',
     label: 'PDHS Payment Approval',
-    description: 'Provincial Director of Health Services approves and releases the repair payment',
+    description:
+      'Provincial Director of Health Services approves and releases the repair payment',
     icon: 'pi-check-circle',
     action: 'approve',
   },
