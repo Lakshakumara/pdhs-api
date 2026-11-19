@@ -114,7 +114,7 @@ export class UsersController {
   // ── POST /api/users/:id/reset-password ────────────────────────────
   @Post(':id/reset-password')
   @HttpCode(HttpStatus.NO_CONTENT)
-  @SkipPermission()
+  @RequirePermission(Permission.USER_UPDATE)
   async resetPassword(
     @ActiveRole() activeRole: JwtRoleClaim,
     @Param('id') id: string,

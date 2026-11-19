@@ -28,22 +28,34 @@ export class CreateUserDto {
   @IsEmail()
   email?: string;
 
+  @IsOptional()
+  @Transform(({ value }: { value: unknown }) =>
+    value === '' ? undefined : value,
+  )
   @IsString()
   @MinLength(8)
-  password!: string;
+  password?: string;
 
-  @IsOptional()
   @IsString()
-  institutionId?: string;
+  institutionId!: string;
 
   @IsOptional()
-  @Transform(({ value }) => {
+  @Transform(({ value }: { value: unknown }) => {
     if (value === 'true') return true;
     if (value === 'false') return false;
     return value;
   })
   @IsBoolean()
   mustChangePassword?: boolean;
+
+  @IsOptional()
+  @Transform(({ value }: { value: unknown }) => {
+    if (value === 'true') return true;
+    if (value === 'false') return false;
+    return value;
+  })
+  @IsBoolean()
+  active?: boolean;
 
   @IsEnum(RoleType)
   role!: RoleType;
@@ -94,7 +106,7 @@ export class QueryUsersDto {
 
   @IsOptional()
   @IsBoolean()
-  @Transform(({ value }) => {
+  @Transform(({ value }: { value: unknown }) => {
     if (value === 'true') return true;
     if (value === 'false') return false;
     return value;

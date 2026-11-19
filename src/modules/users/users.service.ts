@@ -97,7 +97,12 @@ export class UsersService {
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,
       roles: user.roles,
-      permissions: user.permissions,
+      permissions: (
+        (user.permissions ?? []) as Array<{ expiresAt: Date | null }>
+      ).map((p) => ({
+        ...p,
+        active: !p.expiresAt || p.expiresAt > new Date(),
+      })),
     };
   }
 
@@ -115,9 +120,9 @@ export class UsersService {
         { email: { contains: query.search, mode: 'insensitive' } },
       ];
     }
-    console.log('Query:', query);
     if (query.active !== undefined) where.active = query.active;
     if (query.institutionId) where.institutionId = query.institutionId;
+    if (query.districtId) where.institution = { districtId: query.districtId };
     if (query.role) {
       where.roles = { some: { role: query.role } };
     }
@@ -178,7 +183,8 @@ export class UsersService {
       );
     }
 
-    const passwordHash = await bcrypt.hash(dto.password, BCRYPT_ROUNDS);
+    const plainPassword = dto.password || DEFAULT_PASSWORD;
+    const passwordHash = await bcrypt.hash(plainPassword, BCRYPT_ROUNDS);
     const userId = randomUUID();
     const defaultPermissions = ROLE_PERMISSIONS[dto.role] ?? [];
 
@@ -189,8 +195,11 @@ export class UsersService {
         fullName: dto.fullName,
         email: dto.email ?? null,
         passwordHash,
-        institutionId: dto.institutionId ?? null,
-        mustChangePassword: dto.mustChangePassword ?? true,
+        institutionId: dto.institutionId,
+        mustChangePassword: dto.password
+          ? (dto.mustChangePassword ?? true)
+          : true,
+        active: dto.active ?? true,
         roles: {
           create: [
             {
@@ -219,7 +228,11 @@ export class UsersService {
         entityName: 'User',
         recordId: user.id,
         description: `Created user "${user.username}" with role ${dto.role}`,
-        metadata: { role: dto.role, scopeType: dto.scopeType },
+        metadata: {
+          role: dto.role,
+          scopeType: dto.scopeType,
+          active: dto.active ?? true,
+        },
       });
     }
 
