@@ -137,10 +137,6 @@ export const ROLE_PERMISSIONS: Record<RoleType, Permission[]> = {
     Permission.REPAIR_REQUEST_CREATE,
     Permission.REPAIR_REQUEST_UPDATE,
 
-    Permission.SUPPLIER_VIEW,
-    Permission.SUPPLIER_CREATE,
-    Permission.SUPPLIER_UPDATE,
-
     Permission.WORK_ORDER_VIEW,
 
     Permission.PAYMENT_APPROVE_RDHS,
@@ -264,10 +260,32 @@ export const ROLE_PERMISSIONS: Record<RoleType, Permission[]> = {
     Permission.AUDIT_VIEW,
   ],
 
+  INSTITUTION_USER: [
+    Permission.INSTITUTE_VIEW,
+
+    Permission.INVENTORY_VIEW,
+
+    Permission.EQUIPMENT_VIEW,
+
+    Permission.REPAIR_REQUEST_VIEW,
+    Permission.REPAIR_REQUEST_UPDATE,
+
+    Permission.SUPPLIER_VIEW,
+    Permission.SUPPLIER_CREATE,
+    Permission.SUPPLIER_UPDATE,
+    Permission.REPAIR_REQUEST_CREATE,
+
+    Permission.WORK_ORDER_VIEW,
+
+    Permission.REPAIR_FEEDBACK,
+  ],
+
   STORE_KEEPER: [
     Permission.INSTITUTE_VIEW,
-    Permission.INVENTORY_VIEW,
     Permission.INSTITUTE_CREATE,
+    Permission.INSTITUTE_UPDATE,
+
+    Permission.INVENTORY_VIEW,
     Permission.INVENTORY_UPDATE,
     Permission.INVENTORY_DELETE,
 
@@ -318,25 +336,5 @@ export const ROLE_PERMISSIONS: Record<RoleType, Permission[]> = {
     Permission.EQUIPMENT_VIEW,
 
     Permission.PAYMENT_RECORD,
-  ],
-
-  INSTITUTION_USER: [
-    Permission.INSTITUTE_VIEW,
-
-    Permission.INVENTORY_VIEW,
-
-    Permission.EQUIPMENT_VIEW,
-
-    Permission.REPAIR_REQUEST_VIEW,
-    Permission.REPAIR_REQUEST_UPDATE,
-
-    Permission.SUPPLIER_VIEW,
-    Permission.SUPPLIER_CREATE,
-    Permission.SUPPLIER_UPDATE,
-    Permission.REPAIR_REQUEST_CREATE,
-
-    Permission.WORK_ORDER_VIEW,
-
-    Permission.REPAIR_FEEDBACK,
   ],
 };
